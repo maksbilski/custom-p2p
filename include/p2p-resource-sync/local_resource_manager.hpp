@@ -29,11 +29,9 @@ public:
     LocalResourceManager() = default;
     ~LocalResourceManager() = default;
     
-    // Delete copy operations, allow moving
+    // Delete copy operations
     LocalResourceManager(const LocalResourceManager&) = delete;
     LocalResourceManager& operator=(const LocalResourceManager&) = delete;
-    LocalResourceManager(LocalResourceManager&&) = default;
-    LocalResourceManager& operator=(LocalResourceManager&&) = default;
 
     /**
      * @brief Adds a new resource to the manager

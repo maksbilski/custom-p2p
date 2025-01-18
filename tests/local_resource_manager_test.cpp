@@ -16,3 +16,15 @@ TEST_F(LocalResourceManagerTest, CanBeInstantiated) {
     });
 }
 
+TEST_F(LocalResourceManagerTest, CannotBeCopied) {
+    p2p::LocalResourceManager manager1;
+    
+    EXPECT_FALSE(std::is_copy_constructible_v<p2p::LocalResourceManager>);
+    EXPECT_FALSE(std::is_copy_assignable_v<p2p::LocalResourceManager>);
+}
+
+TEST_F(LocalResourceManagerTest, AddResource) {
+    p2p::LocalResourceManager manager1;
+    manager1.addResource(std::string("some_name"), std::string("some_path"));
+}
+

@@ -17,11 +17,13 @@
 #include <algorithm>
 
 namespace p2p {
-
-static std::atomic<bool> should_stop{false};
-static void signal_handler(int signal) {
-    should_stop = true;
-}
+void TcpServer::stop() {
+        should_stop_ = true;
+        if (server_socket_ != -1) {
+            shutdown(server_socket_, SHUT_RDWR);
+            close(server_socket_);
+        }
+    }
 
 int TcpServer::initializeSocket_(int port, int max_clients) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -29,11 +31,18 @@ int TcpServer::initializeSocket_(int port, int max_clients) {
         throw std::runtime_error("Failed opening stream socket: " + std::string(strerror(errno)));
     }
     
-    int opt = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    int reuseaddr = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) == -1) {
         close(sock);
-        throw std::runtime_error("Failed setsockopt: " + std::string(strerror(errno)));
+        throw std::runtime_error("Failed to set SO_REUSEADDR: " + std::string(strerror(errno)));
     }
+
+    int reuseport = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &reuseport, sizeof(reuseport)) == -1) {
+        close(sock);
+        throw std::runtime_error("Failed to set SO_REUSEPORT: " + std::string(strerror(errno)));
+    }
+
     struct sockaddr_in server{};
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
@@ -126,31 +135,53 @@ void TcpServer::handleClient_(int client_socket) {
    close(client_socket);
 }
 
+
+static void (*signal_handler(TcpServer* server))(int) {
+    static TcpServer* srv = server;
+    static int server_socket = -1;
+    
+    if (server != nullptr) {
+        srv = server;
+        server_socket = server->getServerSocket();
+    }
+    
+    return [](int signal) {
+        if (srv != nullptr) {
+            srv->stop();
+            if (server_socket != -1) {
+                close(server_socket);
+            }
+        }
+    };
+}
+
+int TcpServer::getServerSocket() {
+    return server_socket_;
+};
+
 void TcpServer::run() {
    try {
        std::vector<std::jthread> client_threads;
        struct sockaddr_in client{};
        socklen_t client_length = sizeof(client);
-
-       // Install signal handlers
-       std::signal(SIGINT, signal_handler);
-       std::signal(SIGTERM, signal_handler);
-       should_stop = false;
-       
-       int server_socket = initializeSocket_(port_, max_clients_);
-       if (server_socket < 0) {
+        auto handler = signal_handler(this);
+        std::signal(SIGINT, handler);
+        std::signal(SIGTERM, handler);
+            
+       server_socket_ = initializeSocket_(port_, max_clients_);
+       if (server_socket_ < 0) {
            throw std::runtime_error("Failed to initialize socket");
        }
 
        std::cout << "TCP Server listening on port " << port_ << std::endl;
        std::cout << "Waiting for clients..." << std::endl;
 
-       while (!should_stop) {
-           int client_socket = accept(server_socket, 
+       while (!should_stop_) {
+           int client_socket = accept(server_socket_, 
                                     reinterpret_cast<struct sockaddr*>(&client), 
                                     &client_length);
                                     
-           if (client_socket == -1) {
+           if (client_socket == -1 && !should_stop_) {
                if (errno == EINTR) {
                    continue;
                }
@@ -159,6 +190,7 @@ void TcpServer::run() {
                continue;
            }
 
+            if (!should_stop_) {
            try {
                client_threads.emplace_back([this, client_socket]() {
                    try {
@@ -185,6 +217,8 @@ void TcpServer::run() {
                close(client_socket);
            }
        }
+    }
+
 
        for (auto& thread : client_threads) {
            if (thread.joinable()) {
@@ -192,7 +226,7 @@ void TcpServer::run() {
            }
        }
 
-       close(server_socket);
+       close(server_socket_);
    }
    catch (const std::exception& e) {
        std::cerr << "Server error: " << e.what() << std::endl;

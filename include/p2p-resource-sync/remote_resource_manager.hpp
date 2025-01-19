@@ -19,13 +19,13 @@ typedef struct {
 
 typedef struct {
   std::vector<RemoteResource> resources;
-  std::chrono::system_clock::time_point last_announcement;
+  std::chrono::system_clock::time_point lastAnnouncementTime;
 } RemoteNode;
 
 class RemoteResourceManager {
 public:
   RemoteResourceManager(std::chrono::seconds interval)
-      : cleanup_interval(interval) {};
+      : cleanup_interval_(interval) {};
   ~RemoteResourceManager() = default;
 
   RemoteResourceManager(const RemoteResourceManager &) = delete;
@@ -50,9 +50,9 @@ private:
     bool operator()(const struct sockaddr_in &a,
                     const struct sockaddr_in &b) const;
   };
-  mutable std::shared_mutex mutex;
-  std::map<struct sockaddr_in, RemoteNode, SockAddrCompare> nodes;
-  const std::chrono::seconds cleanup_interval;
+  mutable std::shared_mutex mutex_;
+  std::map<struct sockaddr_in, RemoteNode, SockAddrCompare> nodes_;
+  const std::chrono::seconds cleanup_interval_;
 };
 
 } // namespace p2p

@@ -16,6 +16,7 @@ add_library(p2p_resource_sync
     "src/local_resource_manager.cpp"
     "src/remote_resource_manager.cpp"
     "src/announcement_broadcaster.cpp"
+    "src/announcement_receiver.cpp"
 )
 
 message(STATUS "Setting include directories...")
@@ -46,7 +47,7 @@ message(STATUS "Configuring test executable...")
 add_executable(p2p_resource_sync_tests
     "tests/local_resource_manager_test.cpp"
     "tests/remote_resource_manager_test.cpp"
-    "tests/announcement_broadcaster_test.cpp"
+    "tests/announcement_test.cpp"
 )
 
 message(STATUS "Linking test executable...")

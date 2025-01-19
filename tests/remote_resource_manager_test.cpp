@@ -56,7 +56,7 @@ TEST_F(RemoteResourceManagerTest, CanAddMultipleResourcesToNode) {
 
   manager.addOrUpdateNodeResources(node_address1, {resource1, resource2});
 
-  EXPECT_TRUE(manager.getAllResources().size() == 2);
+  ASSERT_EQ(manager.getAllResources().size(), 2);
 }
 
 TEST_F(RemoteResourceManagerTest, CanAddMultipleNodesWithResources) {
@@ -68,7 +68,7 @@ TEST_F(RemoteResourceManagerTest, CanAddMultipleNodesWithResources) {
   manager.addOrUpdateNodeResources(node_address1, {resource1, resource2});
   manager.addOrUpdateNodeResources(node_address2, {resource1, resource2});
 
-  EXPECT_TRUE(manager.getAllResources().size() == 4);
+  ASSERT_EQ(manager.getAllResources().size(), 4);
 }
 
 TEST_F(RemoteResourceManagerTest, NodeHasResource) {
@@ -106,7 +106,7 @@ TEST_F(RemoteResourceManagerTest, FindMultipleNodesWithResource) {
   std::vector<struct sockaddr_in> found_nodes =
       manager.findNodesWithResource("test.txt");
 
-  EXPECT_TRUE(found_nodes.size() == 2);
+  ASSERT_EQ(found_nodes.size(), 2);
 }
 
 TEST_F(RemoteResourceManagerTest, NoNodesWithResourceFound) {

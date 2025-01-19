@@ -16,26 +16,29 @@
 
 class AnnouncementTest : public ::testing::Test {
 protected:
-  AnnouncementTest() : port(8001) {}
+  AnnouncementTest() : sender_port(8001), brdcst_port(8002) {}
 
   std::shared_ptr<p2p::LocalResourceManager> local_manager_ref =
       std::make_shared<p2p::LocalResourceManager>();
   std::shared_ptr<p2p::RemoteResourceManager> remote_manager_ref =
       std::make_shared<p2p::RemoteResourceManager>(std::chrono::seconds(1));
-  uint16_t port;
+  uint16_t sender_port;
+  uint16_t brdcst_port;
 
   void SetUp() override {}
   void TearDown() override {}
 };
 
 TEST_F(AnnouncementTest, BroadcasterCanBeInstantiated) {
-  EXPECT_NO_THROW(
-      { p2p::AnnouncementReceiver receiver(remote_manager_ref, port); });
+  EXPECT_NO_THROW({
+    p2p::AnnouncementBroadcaster broadcaster(local_manager_ref, sender_port,
+                                             brdcst_port);
+  });
 }
 
 TEST_F(AnnouncementTest, ReceiverCanBeInstantiated) {
   EXPECT_NO_THROW(
-      { p2p::AnnouncementReceiver receiver(remote_manager_ref, port); });
+      { p2p::AnnouncementReceiver receiver(remote_manager_ref, brdcst_port); });
 }
 
 TEST_F(AnnouncementTest, CannotBeCopied) {
@@ -46,9 +49,9 @@ TEST_F(AnnouncementTest, CannotBeCopied) {
 }
 
 TEST_F(AnnouncementTest, NoBroadcastWhenNoResources) {
-  p2p::AnnouncementBroadcaster broadcaster(local_manager_ref, port,
-                                           std::chrono::seconds(2), true);
-  p2p::AnnouncementReceiver receiver(remote_manager_ref, port, 1, true);
+  p2p::AnnouncementBroadcaster broadcaster(
+      local_manager_ref, sender_port, brdcst_port, std::chrono::seconds(2));
+  p2p::AnnouncementReceiver receiver(remote_manager_ref, brdcst_port, 1);
 
   auto remote_resources = remote_manager_ref->getAllResources();
   EXPECT_TRUE(remote_resources.empty());
@@ -69,9 +72,9 @@ TEST_F(AnnouncementTest, NoBroadcastWhenNoResources) {
 }
 
 TEST_F(AnnouncementTest, BroadcastsMessageWithResource) {
-  p2p::AnnouncementBroadcaster broadcaster(local_manager_ref, port,
-                                           std::chrono::seconds(2), true);
-  p2p::AnnouncementReceiver receiver(remote_manager_ref, port, 1, true);
+  p2p::AnnouncementBroadcaster broadcaster(
+      local_manager_ref, sender_port, brdcst_port, std::chrono::seconds(2));
+  p2p::AnnouncementReceiver receiver(remote_manager_ref, brdcst_port, 1);
   local_manager_ref->addResource("test", "../test_local_files/test.txt");
 
   auto remote_resources = remote_manager_ref->getAllResources();

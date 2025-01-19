@@ -77,7 +77,6 @@ void SetUp() override {
     });
 }
 void TearDown() override {
-    std::cout << "TearDown: Stopping server thread" << std::endl;
     server->stop();
    
     if (server_thread.joinable()) {
@@ -88,7 +87,6 @@ void TearDown() override {
         if (future.wait_for(std::chrono::seconds(5)) == std::future_status::timeout) {
             std::cerr << "Warning: Server thread join timeout" << std::endl;
         } else {
-            std::cout << "Server thread joined successfully" << std::endl;
         }
     }
    
@@ -110,13 +108,11 @@ void TearDown() override {
 }
 
     bool compareFiles(const std::string& file1, const std::string& file2) {
-        std::cout << "Comparing files:\n  " << file1 << "\n  " << file2 << std::endl;
         
         std::ifstream f1(file1, std::ios::binary);
         std::ifstream f2(file2, std::ios::binary);
         
         if (!f1 || !f2) {
-            std::cout << "Failed to open files for comparison" << std::endl;
             return false;
         }
         
@@ -134,18 +130,14 @@ void TearDown() override {
             total_bytes_compared += count1;
             
             if (count1 != count2) {
-                std::cout << "Files have different sizes at position " << total_bytes_compared << std::endl;
                 return false;
             }
             if (memcmp(buf1.data(), buf2.data(), count1) != 0) {
-                std::cout << "Content mismatch at position " << total_bytes_compared << std::endl;
                 return false;
             }
         }
         
         bool result = f1.eof() && f2.eof();
-        std::cout << "File comparison complete. Total bytes compared: " << total_bytes_compared 
-                  << " Result: " << (result ? "match" : "mismatch") << std::endl;
         return result;
     }
 
@@ -163,18 +155,14 @@ void TearDown() override {
 
 TEST_F(ResourceDownloaderTest, CanDownloadExistingResource) {
     bool result = downloader->downloadResource("127.0.0.1", server_port, "test.txt");
-    std::cout << "Download result: " << (result ? "success" : "failure") << std::endl;
     EXPECT_TRUE(result);
     
     std::string downloaded_file = download_dir + "/test.txt";
     std::string original_file = test_file_path;
     
-    std::cout << "Checking if downloaded file exists: " << downloaded_file << std::endl;
     bool exists = std::filesystem::exists(downloaded_file);
-    std::cout << "File exists: " << (exists ? "yes" : "no") << std::endl;
     EXPECT_TRUE(exists);
     
-    std::cout << "Comparing downloaded file with original..." << std::endl;
     EXPECT_TRUE(compareFiles(downloaded_file, original_file));
 }
 
@@ -189,7 +177,6 @@ TEST_F(ResourceDownloaderTest, ConcurrentDownloadsStressTest) {
         downloaders.push_back(std::make_unique<p2p::ResourceDownloader>(client_dir));
     }
     
-    std::cout << "Starting " << NUM_CLIENTS << " concurrent downloads..." << std::endl;
     
     auto start_time = std::chrono::steady_clock::now();
     
@@ -211,14 +198,12 @@ TEST_F(ResourceDownloaderTest, ConcurrentDownloadsStressTest) {
     auto end_time = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     
-    std::cout << "All downloads completed in " << duration.count() << "ms" << std::endl;
     
     EXPECT_EQ(std::count(results.begin(), results.end(), true), NUM_CLIENTS);
     
     int successful_comparisons = 0;
     for (int i = 0; i < NUM_CLIENTS; ++i) {
         std::string client_file = download_dir + "/client_" + std::to_string(i) + "/test.txt";
-        std::cout << "Verifying download for client " << i << "..." << std::endl;
         
         EXPECT_TRUE(std::filesystem::exists(client_file));
         
@@ -229,7 +214,4 @@ TEST_F(ResourceDownloaderTest, ConcurrentDownloadsStressTest) {
     
     EXPECT_EQ(successful_comparisons, NUM_CLIENTS);
     
-    std::cout << "Concurrent download test completed. "
-              << successful_comparisons << "/" << NUM_CLIENTS 
-              << " files verified successfully." << std::endl;
 }

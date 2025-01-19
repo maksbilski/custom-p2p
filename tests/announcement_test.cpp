@@ -13,10 +13,38 @@
 #include <sys/socket.h>
 #include <thread>
 #include <vector>
+#include <fstream>
+#include <filesystem>
+#include <stdexcept>
 
 class AnnouncementTest : public ::testing::Test {
 protected:
-  AnnouncementTest() : sender_port(8001), brdcst_port(8002) {}
+  static void createTestFile(const std::string& path, const std::string& content = "test content") {
+      std::filesystem::path dir_path = std::filesystem::path(path).parent_path();
+      if (!dir_path.empty()) {
+          std::filesystem::create_directories(dir_path);
+      }
+      
+      std::ofstream file(path);
+      if (!file.is_open()) {
+          throw std::runtime_error("Failed to create test file: " + path);
+      }
+      file << content;
+      file.close();
+  }
+
+  static void removeTestFile(const std::string& path) {
+      if (std::filesystem::exists(path)) {
+          std::filesystem::remove(path);
+      }
+      
+      auto dir_path = std::filesystem::path(path).parent_path();
+      if (!dir_path.empty() && std::filesystem::exists(dir_path) && 
+          std::filesystem::is_empty(dir_path)) {
+          std::filesystem::remove(dir_path);
+      }
+  }
+  AnnouncementTest() : sender_port(8003), brdcst_port(8004) {}
 
   std::shared_ptr<p2p::LocalResourceManager> local_manager_ref =
       std::make_shared<p2p::LocalResourceManager>();
@@ -73,24 +101,24 @@ TEST_F(AnnouncementTest, NoBroadcastWhenNoResources) {
 }
 
 TEST_F(AnnouncementTest, BroadcastsMessageWithResource) {
+  const std::string test_file_path = "../test_local_files/test.txt";
+  createTestFile(test_file_path);
+
   p2p::AnnouncementBroadcaster broadcaster(
       local_manager_ref, 1, sender_port, brdcst_port, std::chrono::seconds(2));
   p2p::AnnouncementReceiver receiver(remote_manager_ref, 2, brdcst_port, 1);
-  local_manager_ref->addResource("test", "../test_local_files/test.txt");
-
+  local_manager_ref->addResource("test", test_file_path);
   auto remote_resources = remote_manager_ref->getAllResources();
   EXPECT_TRUE(remote_resources.empty());
-
   std::jthread broadcaster_thread([&broadcaster]() { broadcaster.run(); });
   std::jthread receiver_thread([&receiver]() { receiver.run(); });
-
   std::this_thread::sleep_for(std::chrono::seconds(4));
-
   broadcaster.stop();
   receiver.stop();
   broadcaster_thread.join();
   receiver_thread.join();
-
   remote_resources = remote_manager_ref->getAllResources();
   EXPECT_TRUE(remote_resources.empty());
+
+  removeTestFile(test_file_path);
 }

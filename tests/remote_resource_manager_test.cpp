@@ -27,8 +27,10 @@ protected:
   }
 
   void addFreshNode(const sockaddr_in &addr) {
-    std::vector<p2p::RemoteResource> resources = {{"test.txt", 1000}};
-    manager.addOrUpdateNodeResources(addr, resources);
+    uint64_t current_timestamp =
+        std::chrono::system_clock::now().time_since_epoch().count();
+    std::vector<p2p::Resource> resources = {{"test.txt", 1000}};
+    manager.addOrUpdateNodeResources(addr, resources, current_timestamp);
   }
 };
 
@@ -51,10 +53,13 @@ TEST_F(RemoteResourceManagerTest, CanAddSingleResourceToNode) {
 
 TEST_F(RemoteResourceManagerTest, CanAddMultipleResourcesToNode) {
   struct sockaddr_in node_address1 = this->createAddress("192.168.1.1", 8000);
-  p2p::RemoteResource resource1{.name = "test_resource1", .size = 100};
-  p2p::RemoteResource resource2{.name = "test_resource2", .size = 100};
+  p2p::Resource resource1{.name = "test_resource1", .size = 100};
+  p2p::Resource resource2{.name = "test_resource2", .size = 100};
+  uint64_t current_timestamp =
+      std::chrono::system_clock::now().time_since_epoch().count();
 
-  manager.addOrUpdateNodeResources(node_address1, {resource1, resource2});
+  manager.addOrUpdateNodeResources(node_address1, {resource1, resource2},
+                                   current_timestamp);
 
   ASSERT_EQ(manager.getAllResources().size(), 2);
 }
@@ -62,11 +67,15 @@ TEST_F(RemoteResourceManagerTest, CanAddMultipleResourcesToNode) {
 TEST_F(RemoteResourceManagerTest, CanAddMultipleNodesWithResources) {
   struct sockaddr_in node_address1 = this->createAddress("192.168.1.1", 8000);
   struct sockaddr_in node_address2 = this->createAddress("192.168.1.2", 8000);
-  p2p::RemoteResource resource1{.name = "test_resource1", .size = 100};
-  p2p::RemoteResource resource2{.name = "test_resource2", .size = 100};
+  p2p::Resource resource1{.name = "test_resource1", .size = 100};
+  p2p::Resource resource2{.name = "test_resource2", .size = 100};
+  uint64_t current_timestamp =
+      std::chrono::system_clock::now().time_since_epoch().count();
 
-  manager.addOrUpdateNodeResources(node_address1, {resource1, resource2});
-  manager.addOrUpdateNodeResources(node_address2, {resource1, resource2});
+  manager.addOrUpdateNodeResources(node_address1, {resource1, resource2},
+                                   current_timestamp);
+  manager.addOrUpdateNodeResources(node_address2, {resource1, resource2},
+                                   current_timestamp);
 
   ASSERT_EQ(manager.getAllResources().size(), 4);
 }
@@ -124,10 +133,14 @@ TEST_F(RemoteResourceManagerTest, NoNodesWithResourceFound) {
 TEST_F(RemoteResourceManagerTest, CleanupStaleNodesTest) {
   struct sockaddr_in node_address1 = this->createAddress("192.168.1.1", 8000);
   struct sockaddr_in node_address2 = this->createAddress("192.168.1.2", 8000);
-  std::vector<p2p::RemoteResource> resources1 = {{"test1.txt", 1000}};
-  std::vector<p2p::RemoteResource> resources2 = {{"test2.txt", 2000}};
-  manager.addOrUpdateNodeResources(node_address1, resources1);
-  manager.addOrUpdateNodeResources(node_address2, resources2);
+  std::vector<p2p::Resource> resources1 = {{"test1.txt", 1000}};
+  std::vector<p2p::Resource> resources2 = {{"test2.txt", 2000}};
+  uint64_t current_timestamp =
+      std::chrono::system_clock::now().time_since_epoch().count();
+  manager.addOrUpdateNodeResources(node_address1, resources1,
+                                   current_timestamp);
+  manager.addOrUpdateNodeResources(node_address2, resources2,
+                                   current_timestamp);
 
   EXPECT_TRUE(manager.hasResource(node_address1, "test1.txt"));
   EXPECT_TRUE(manager.hasResource(node_address2, "test2.txt"));
@@ -142,10 +155,14 @@ TEST_F(RemoteResourceManagerTest, CleanupStaleNodesTest) {
 TEST_F(RemoteResourceManagerTest, CleanupStaleNodesSkipTest) {
   struct sockaddr_in node_address1 = this->createAddress("192.168.1.1", 8000);
   struct sockaddr_in node_address2 = this->createAddress("192.168.1.2", 8000);
-  std::vector<p2p::RemoteResource> resources1 = {{"test1.txt", 1000}};
-  std::vector<p2p::RemoteResource> resources2 = {{"test2.txt", 2000}};
-  manager.addOrUpdateNodeResources(node_address1, resources1);
-  manager.addOrUpdateNodeResources(node_address2, resources2);
+  std::vector<p2p::Resource> resources1 = {{"test1.txt", 1000}};
+  std::vector<p2p::Resource> resources2 = {{"test2.txt", 2000}};
+  uint64_t current_timestamp =
+      std::chrono::system_clock::now().time_since_epoch().count();
+  manager.addOrUpdateNodeResources(node_address1, resources1,
+                                   current_timestamp);
+  manager.addOrUpdateNodeResources(node_address2, resources2,
+                                   current_timestamp);
 
   EXPECT_TRUE(manager.hasResource(node_address1, "test1.txt"));
   EXPECT_TRUE(manager.hasResource(node_address2, "test2.txt"));

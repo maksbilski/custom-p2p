@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <chrono>
+#include <cstdint>
 #include <mutex>
 #include <netinet/in.h>
 #include <p2p-resource-sync/remote_resource_manager.hpp>
@@ -15,10 +17,10 @@ bool RemoteResourceManager::SockAddrCompare::operator()(
   return a.sin_port < b.sin_port;
 }
 
-std::vector<std::pair<struct sockaddr_in, RemoteResource>>
+std::vector<std::pair<struct sockaddr_in, Resource>>
 RemoteResourceManager::getAllResources() const {
   std::shared_lock lock(this->mutex_);
-  std::vector<std::pair<struct sockaddr_in, RemoteResource>> resources;
+  std::vector<std::pair<struct sockaddr_in, Resource>> resources;
   for (const auto &[node_addr, node_data] : this->nodes_) {
     for (const auto &resource : node_data.resources) {
       resources.emplace_back(node_addr, resource);
@@ -29,18 +31,18 @@ RemoteResourceManager::getAllResources() const {
 
 void RemoteResourceManager::addOrUpdateNodeResources(
     const struct sockaddr_in &node_address,
-    const std::vector<RemoteResource> &resources) {
+    const std::vector<Resource> &resources, uint64_t timestamp) {
   std::unique_lock lock(this->mutex_);
   this->nodes_[node_address] =
       RemoteNode{.resources = resources,
-                 .lastAnnouncementTime = std::chrono::system_clock::now()};
+                 .lastAnnouncementTime = std::chrono::system_clock::time_point(
+                     std::chrono::nanoseconds(timestamp))};
   return;
 };
 
 bool RemoteResourceManager::hasResource(
     const struct sockaddr_in &node_address,
     const std::string &resource_name) const {
-
   std::shared_lock lock(this->mutex_);
 
   auto node_it = nodes_.find(node_address);
@@ -49,7 +51,7 @@ bool RemoteResourceManager::hasResource(
 
   auto resource_it = std::find_if(node_it->second.resources.begin(),
                                   node_it->second.resources.end(),
-                                  [&resource_name](const RemoteResource &res) {
+                                  [&resource_name](const Resource &res) {
                                     return res.name == resource_name;
                                   });
   return resource_it != node_it->second.resources.end();
@@ -57,14 +59,13 @@ bool RemoteResourceManager::hasResource(
 
 std::vector<struct sockaddr_in> RemoteResourceManager::findNodesWithResource(
     const std::string &resource_name) const {
-
   std::shared_lock lock(this->mutex_);
   std::vector<struct sockaddr_in> found_nodes;
 
   for (const auto &[node_addr, node_info] : this->nodes_) {
     auto resource_it =
         std::find_if(node_info.resources.begin(), node_info.resources.end(),
-                     [&resource_name](const RemoteResource &res) {
+                     [&resource_name](const Resource &res) {
                        return res.name == resource_name;
                      });
     if (resource_it != node_info.resources.end())

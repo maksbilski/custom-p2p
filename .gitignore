@@ -35,3 +35,5 @@
 build/
 
 .cache/
+
+test_local_files/

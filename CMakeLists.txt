@@ -9,13 +9,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-# set(CMAKE_BUILD_TYPE Debug)
 # Main library
 message(STATUS "Configuring main library...")
 add_library(p2p_resource_sync
     "src/local_resource_manager.cpp"
     "src/remote_resource_manager.cpp"
     "src/announcement_broadcaster.cpp"
+    "src/tcp_server.cpp"
+    "src/resource_downloader.cpp"
 )
 
 message(STATUS "Setting include directories...")
@@ -47,6 +48,8 @@ add_executable(p2p_resource_sync_tests
     "tests/local_resource_manager_test.cpp"
     "tests/remote_resource_manager_test.cpp"
     "tests/announcement_broadcaster_test.cpp"
+    "tests/tcp_server_test.cpp"
+    "tests/resource_downloader_test.cpp"
 )
 
 message(STATUS "Linking test executable...")

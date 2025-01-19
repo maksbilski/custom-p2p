@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chrono>
-#include <cstddef>
+#include <cstdint>
 #include <ctime>
 #include <map>
 #include <netinet/in.h>
@@ -14,11 +14,11 @@ namespace p2p {
 
 typedef struct {
   std::string name;
-  std::size_t size;
-} RemoteResource;
+  uint32_t size;
+} Resource;
 
 typedef struct {
-  std::vector<RemoteResource> resources;
+  std::vector<Resource> resources;
   std::chrono::system_clock::time_point lastAnnouncementTime;
 } RemoteNode;
 
@@ -31,11 +31,11 @@ public:
   RemoteResourceManager(const RemoteResourceManager &) = delete;
   RemoteResourceManager &operator=(const RemoteResourceManager &) = delete;
 
-  std::vector<std::pair<struct sockaddr_in, RemoteResource>>
-  getAllResources() const;
+  std::vector<std::pair<struct sockaddr_in, Resource>> getAllResources() const;
 
   void addOrUpdateNodeResources(const struct sockaddr_in &node_address,
-                                const std::vector<RemoteResource> &resources);
+                                const std::vector<Resource> &resources,
+                                uint64_t timestamp);
 
   bool hasResource(const struct sockaddr_in &node_addess,
                    const std::string &resource_name) const;

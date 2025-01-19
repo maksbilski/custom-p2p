@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <iostream>
 
 
 namespace p2p {
@@ -137,30 +138,45 @@ namespace p2p {
           }
       }
 
-      bool ResourceDownloader::downloadResource(
-          const std::string& peer_addr,
-          int peer_port,
-          const std::string& resource_name
-      ) {
-          int sock = initialize_socket_(peer_addr, peer_port);
-          try {
-              send_resource_request_(sock, 0, resource_name);
-              
-              auto [exists, file_size] = receive_initial_response_(sock);
-              if (!exists) {
-                  close(sock);
-                  return false;
-              }
-              
-              receive_file_(sock, resource_name, file_size);
-              
-              close(sock);
-              return true;
-          }
-          catch (const std::exception& e) {
-              close(sock);
-              throw;
-          }
-      }
+    bool ResourceDownloader::downloadResource(
+        const std::string& peer_addr,
+        int peer_port,
+        const std::string& resource_name
+    ) {
+        std::cout << "Starting download of " << resource_name << " from " << peer_addr << ":" << peer_port << std::endl;
+        
+        int sock = initialize_socket_(peer_addr, peer_port);
+        std::cout << "Socket initialized: " << sock << std::endl;
+        
+        try {
+            std::cout << "Sending resource request..." << std::endl;
+            send_resource_request_(sock, 0, resource_name);
+            std::cout << "Resource request sent successfully" << std::endl;
+            
+            std::cout << "Waiting for initial response..." << std::endl;
+            auto [exists, file_size] = receive_initial_response_(sock);
+            std::cout << "Initial response received - Resource exists: " << (exists ? "yes" : "no") 
+                     << ", Size: " << file_size << " bytes" << std::endl;
+            
+            if (!exists) {
+                std::cout << "Resource does not exist, aborting download" << std::endl;
+                close(sock);
+                return false;
+            }
+            
+            std::cout << "Starting file transfer..." << std::endl;
+            receive_file_(sock, resource_name, file_size);
+            std::cout << "File transfer completed successfully" << std::endl;
+            
+            close(sock);
+            std::cout << "Socket closed, download finished" << std::endl;
+            return true;
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error during download: " << e.what() << std::endl;
+            close(sock);
+            throw;
+        }
+    }
 
 }

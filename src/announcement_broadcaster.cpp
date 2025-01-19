@@ -2,7 +2,6 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <netinet/in.h>
@@ -66,7 +65,6 @@ void AnnouncementBroadcaster::initializeSocket(bool reuse_port) {
                              std::string(strerror(errno)));
   }
 };
-
 AnnounceMessage AnnouncementBroadcaster::createAnnounceMessage() const {
   AnnounceMessage message;
   auto local_resources = this->resource_manager_->getAllResources();

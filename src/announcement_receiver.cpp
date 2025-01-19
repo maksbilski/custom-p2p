@@ -1,6 +1,7 @@
 #include "p2p-resource-sync/announcement_receiver.hpp"
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -13,9 +14,10 @@
 namespace p2p {
 
 AnnouncementReceiver::AnnouncementReceiver(
-    std::shared_ptr<RemoteResourceManager> resource_manager, uint16_t port,
-    int socket_timeout) {
+    std::shared_ptr<RemoteResourceManager> resource_manager, uint32_t node_id,
+    uint16_t port, int socket_timeout) {
   this->resource_manager_ = resource_manager;
+  this->node_id_ = node_id;
   this->port_ = port;
   this->initializeSocket_(socket_timeout);
 };
@@ -76,6 +78,9 @@ void AnnouncementReceiver::processAnnouncement_(
 
   AnnounceMessage message = parseAnnounceMessage_(buffer, size);
 
+  if (message.senderId != this->node_id_)
+    return;
+
   this->resource_manager_->addOrUpdateNodeResources(
       sender_addr, message.resources, message.timestamp);
 }
@@ -100,6 +105,9 @@ AnnouncementReceiver::parseAnnounceMessage_(const std::vector<uint8_t> &buffer,
 
   std::memcpy(&message.timestamp, buffer.data() + offset, sizeof(uint64_t));
   offset += sizeof(uint64_t);
+
+  std::memcpy(&message.senderId, buffer.data() + offset, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
 
   std::memcpy(&message.resourceCount, buffer.data() + offset, sizeof(uint32_t));
   offset += sizeof(uint32_t);

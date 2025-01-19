@@ -13,7 +13,7 @@ namespace p2p {
 class AnnouncementReceiver {
 public:
   AnnouncementReceiver(std::shared_ptr<RemoteResourceManager> resource_manager,
-                       uint16_t port, int socket_timeout = 1);
+                       uint32_t node_id, uint16_t port, int socket_timeout = 1);
 
   ~AnnouncementReceiver();
 
@@ -36,6 +36,7 @@ private:
                                         size_t size);
 
   std::shared_ptr<RemoteResourceManager> resource_manager_;
+  uint32_t node_id_;
   uint16_t port_;
   int socket_;
   std::atomic<bool> running_{false};

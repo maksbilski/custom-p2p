@@ -21,8 +21,8 @@ public:
       : local_resource_manager_(std::make_shared<p2p::LocalResourceManager>()),
         remote_resource_manager_(std::make_shared<p2p::RemoteResourceManager>(
             std::chrono::seconds(150))),
-        broadcaster_(local_resource_manager_, sender_port, broadcast_port),
-        receiver_(remote_resource_manager_, broadcast_port),
+        broadcaster_(local_resource_manager_, 1, sender_port, broadcast_port),
+        receiver_(remote_resource_manager_, 1, broadcast_port),
         tcp_server_(local_resource_manager_), downloader_("downloads/") {
 
     // Start components in separate threads

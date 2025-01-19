@@ -15,9 +15,11 @@
 namespace p2p {
 
 AnnouncementBroadcaster::AnnouncementBroadcaster(
-    std::shared_ptr<LocalResourceManager> resource_manager, uint16_t port,
-    uint16_t broadcast_port, std::chrono::seconds broadcast_interval) {
+    std::shared_ptr<LocalResourceManager> resource_manager, uint32_t node_id,
+    uint16_t port, uint16_t broadcast_port,
+    std::chrono::seconds broadcast_interval) {
   this->resource_manager_ = resource_manager;
+  this->node_id_ = node_id;
   this->port_ = port;
   this->broadcast_interval_ = broadcast_interval;
   this->initializeSocket_(broadcast_port);
@@ -61,6 +63,7 @@ AnnounceMessage AnnouncementBroadcaster::createAnnounceMessage_() const {
   auto local_resources = this->resource_manager_->getAllResources();
   message.timestamp =
       std::chrono::system_clock::now().time_since_epoch().count();
+  message.senderId = this->node_id_;
   message.resourceCount = local_resources.size();
   message.resources.reserve(local_resources.size());
 
@@ -73,6 +76,7 @@ AnnounceMessage AnnouncementBroadcaster::createAnnounceMessage_() const {
 
   message.datagramLength = sizeof(uint32_t) + // datagramLength
                            sizeof(uint64_t) + // timestamp
+                           sizeof(uint32_t) + // senderId
                            sizeof(uint32_t);  // resourceCount
 
   // add each resource
@@ -96,6 +100,8 @@ void AnnouncementBroadcaster::broadcastAnnouncement_() const {
                     sizeof(message.datagramLength));
   buffer.insert(buffer.end(), (uint8_t *)&message.timestamp,
                 (uint8_t *)&message.timestamp + sizeof(message.timestamp));
+  buffer.insert(buffer.end(), (uint8_t *)&message.senderId,
+                (uint8_t *)&message.senderId + sizeof(message.senderId));
   buffer.insert(buffer.end(), (uint8_t *)&message.resourceCount,
                 (uint8_t *)&message.resourceCount +
                     sizeof(message.resourceCount));

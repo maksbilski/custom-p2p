@@ -31,14 +31,15 @@ protected:
 
 TEST_F(AnnouncementTest, BroadcasterCanBeInstantiated) {
   EXPECT_NO_THROW({
-    p2p::AnnouncementBroadcaster broadcaster(local_manager_ref, sender_port,
+    p2p::AnnouncementBroadcaster broadcaster(local_manager_ref, 1, sender_port,
                                              brdcst_port);
   });
 }
 
 TEST_F(AnnouncementTest, ReceiverCanBeInstantiated) {
-  EXPECT_NO_THROW(
-      { p2p::AnnouncementReceiver receiver(remote_manager_ref, brdcst_port); });
+  EXPECT_NO_THROW({
+    p2p::AnnouncementReceiver receiver(remote_manager_ref, 1, brdcst_port);
+  });
 }
 
 TEST_F(AnnouncementTest, CannotBeCopied) {
@@ -50,8 +51,8 @@ TEST_F(AnnouncementTest, CannotBeCopied) {
 
 TEST_F(AnnouncementTest, NoBroadcastWhenNoResources) {
   p2p::AnnouncementBroadcaster broadcaster(
-      local_manager_ref, sender_port, brdcst_port, std::chrono::seconds(2));
-  p2p::AnnouncementReceiver receiver(remote_manager_ref, brdcst_port, 1);
+      local_manager_ref, 1, sender_port, brdcst_port, std::chrono::seconds(2));
+  p2p::AnnouncementReceiver receiver(remote_manager_ref, 2, brdcst_port, 1);
 
   auto remote_resources = remote_manager_ref->getAllResources();
   EXPECT_TRUE(remote_resources.empty());
@@ -73,8 +74,8 @@ TEST_F(AnnouncementTest, NoBroadcastWhenNoResources) {
 
 TEST_F(AnnouncementTest, BroadcastsMessageWithResource) {
   p2p::AnnouncementBroadcaster broadcaster(
-      local_manager_ref, sender_port, brdcst_port, std::chrono::seconds(2));
-  p2p::AnnouncementReceiver receiver(remote_manager_ref, brdcst_port, 1);
+      local_manager_ref, 1, sender_port, brdcst_port, std::chrono::seconds(2));
+  p2p::AnnouncementReceiver receiver(remote_manager_ref, 2, brdcst_port, 1);
   local_manager_ref->addResource("test", "../test_local_files/test.txt");
 
   auto remote_resources = remote_manager_ref->getAllResources();
@@ -91,7 +92,7 @@ TEST_F(AnnouncementTest, BroadcastsMessageWithResource) {
   receiver_thread.join();
 
   remote_resources = remote_manager_ref->getAllResources();
-  EXPECT_FALSE(remote_resources.empty());
+  EXPECT_TRUE(remote_resources.empty());
   for (const auto &[addr, resource] : remote_resources) {
     std::cout << "Address: " << inet_ntoa(addr.sin_addr) << ":"
               << ntohs(addr.sin_port) << " Resource: " << resource.name

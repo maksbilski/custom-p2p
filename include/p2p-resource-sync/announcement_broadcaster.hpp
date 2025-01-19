@@ -14,6 +14,7 @@ namespace p2p {
 typedef struct {
   uint32_t datagramLength;
   uint64_t timestamp;
+  uint32_t senderId;
   uint32_t resourceCount;
   std::vector<Resource> resources;
 } AnnounceMessage;
@@ -21,8 +22,8 @@ typedef struct {
 class AnnouncementBroadcaster {
 public:
   AnnouncementBroadcaster(
-      std::shared_ptr<LocalResourceManager> resource_manager, uint16_t port,
-      uint16_t broadcast_port,
+      std::shared_ptr<LocalResourceManager> resource_manager, uint32_t node_id,
+      uint16_t port, uint16_t broadcast_port,
       std::chrono::seconds broadcast_interval = std::chrono::seconds(30));
 
   ~AnnouncementBroadcaster();
@@ -42,6 +43,7 @@ private:
   void broadcastAnnouncement_() const;
 
   std::shared_ptr<LocalResourceManager> resource_manager_;
+  uint32_t node_id_;
   uint16_t port_;
   std::chrono::seconds broadcast_interval_;
   int socket_;

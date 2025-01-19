@@ -25,7 +25,7 @@ typedef struct {
 class RemoteResourceManager {
 public:
   RemoteResourceManager(std::chrono::seconds interval)
-      : cleanupinterval(interval) {};
+      : cleanup_interval(interval) {};
   ~RemoteResourceManager() = default;
 
   RemoteResourceManager(const RemoteResourceManager &) = delete;
@@ -52,7 +52,7 @@ private:
   };
   mutable std::shared_mutex mutex;
   std::map<struct sockaddr_in, RemoteNode, SockAddrCompare> nodes;
-  const std::chrono::seconds cleanupinterval;
+  const std::chrono::seconds cleanup_interval;
 };
 
 } // namespace p2p

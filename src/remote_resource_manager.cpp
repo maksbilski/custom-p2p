@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <chrono>
 #include <mutex>
 #include <netinet/in.h>
 #include <p2p-resource-sync/remote_resource_manager.hpp>
@@ -18,9 +17,9 @@ bool RemoteResourceManager::SockAddrCompare::operator()(
 
 std::vector<std::pair<struct sockaddr_in, RemoteResource>>
 RemoteResourceManager::getAllResources() const {
-  std::shared_lock lock(this->mutex);
+  std::shared_lock lock(this->mutex_);
   std::vector<std::pair<struct sockaddr_in, RemoteResource>> resources;
-  for (const auto &[node_addr, node_data] : this->nodes) {
+  for (const auto &[node_addr, node_data] : this->nodes_) {
     for (const auto &resource : node_data.resources) {
       resources.emplace_back(node_addr, resource);
     }
@@ -31,10 +30,10 @@ RemoteResourceManager::getAllResources() const {
 void RemoteResourceManager::addOrUpdateNodeResources(
     const struct sockaddr_in &node_address,
     const std::vector<RemoteResource> &resources) {
-  std::unique_lock lock(this->mutex);
-  this->nodes[node_address] =
+  std::unique_lock lock(this->mutex_);
+  this->nodes_[node_address] =
       RemoteNode{.resources = resources,
-                 .last_announcement = std::chrono::system_clock::now()};
+                 .lastAnnouncementTime = std::chrono::system_clock::now()};
   return;
 };
 
@@ -42,10 +41,10 @@ bool RemoteResourceManager::hasResource(
     const struct sockaddr_in &node_address,
     const std::string &resource_name) const {
 
-  std::shared_lock lock(this->mutex);
+  std::shared_lock lock(this->mutex_);
 
-  auto node_it = nodes.find(node_address);
-  if (node_it == nodes.end())
+  auto node_it = nodes_.find(node_address);
+  if (node_it == nodes_.end())
     return false;
 
   auto resource_it = std::find_if(node_it->second.resources.begin(),
@@ -59,10 +58,10 @@ bool RemoteResourceManager::hasResource(
 std::vector<struct sockaddr_in> RemoteResourceManager::findNodesWithResource(
     const std::string &resource_name) const {
 
-  std::shared_lock lock(this->mutex);
+  std::shared_lock lock(this->mutex_);
   std::vector<struct sockaddr_in> found_nodes;
 
-  for (const auto &[node_addr, node_info] : this->nodes) {
+  for (const auto &[node_addr, node_info] : this->nodes_) {
     auto resource_it =
         std::find_if(node_info.resources.begin(), node_info.resources.end(),
                      [&resource_name](const RemoteResource &res) {
@@ -76,11 +75,11 @@ std::vector<struct sockaddr_in> RemoteResourceManager::findNodesWithResource(
 };
 
 void RemoteResourceManager::cleanupStaleNodes() {
-  std::unique_lock lock(this->mutex);
+  std::unique_lock lock(this->mutex_);
   auto now = std::chrono::system_clock::now();
-  for (auto it = nodes.begin(); it != nodes.end();) {
-    if (now - it->second.last_announcement >= this->cleanup_interval) {
-      it = this->nodes.erase(it);
+  for (auto it = nodes_.begin(); it != nodes_.end();) {
+    if (now - it->second.lastAnnouncementTime >= this->cleanup_interval_) {
+      it = this->nodes_.erase(it);
     } else {
       ++it;
     }

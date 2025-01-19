@@ -9,10 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-<<<<<<< HEAD
 # set(CMAKE_BUILD_TYPE Debug)
-=======
->>>>>>> 85fca1e4011a447e07b76aaeb6e714a04cc2f800
 # Main library
 message(STATUS "Configuring main library...")
 add_library(p2p_resource_sync

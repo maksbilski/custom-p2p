@@ -55,4 +55,4 @@ private:
   const std::chrono::seconds cleanup_interval_;
 };
 
-} // namespace p2p
+}

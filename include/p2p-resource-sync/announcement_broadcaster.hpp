@@ -35,11 +35,11 @@ public:
   void stop();
 
 private:
-  void initializeSocket(bool reuse_port);
+  void initializeSocket_(bool reuse_port);
 
-  AnnounceMessage createAnnounceMessage() const;
+  AnnounceMessage createAnnounceMessage_() const;
 
-  void broadcastAnnouncement() const;
+  void broadcastAnnouncement_() const;
 
   std::shared_ptr<LocalResourceManager> resource_manager_;
   uint16_t port_;

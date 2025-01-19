@@ -16,13 +16,13 @@ AnnouncementReceiver::AnnouncementReceiver(
     int socket_timeout, bool reuse_port) {
   this->resource_manager_ = resource_manager;
   this->port_ = port;
-  this->initializeSocket(socket_timeout, reuse_port);
+  this->initializeSocket_(socket_timeout, reuse_port);
 };
 
 AnnouncementReceiver::~AnnouncementReceiver() { close(this->socket_); };
 
-void AnnouncementReceiver::initializeSocket(int socket_timeout,
-                                            bool reuse_port) {
+void AnnouncementReceiver::initializeSocket_(int socket_timeout,
+                                             bool reuse_port) {
   this->socket_ = socket(AF_INET, SOCK_DGRAM, 0);
   if (this->socket_ < 0) {
     throw std::runtime_error("Failed to create socket: " +
@@ -59,7 +59,7 @@ void AnnouncementReceiver::initializeSocket(int socket_timeout,
   }
 };
 
-bool AnnouncementReceiver::receiveAndProcessAnnouncement() {
+bool AnnouncementReceiver::receiveAndProcessAnnouncement_() {
   std::vector<uint8_t> buffer(MAX_DATAGRAM_SIZE);
   struct sockaddr_in sender_addr;
   socklen_t sender_addr_len = sizeof(sender_addr);
@@ -73,25 +73,25 @@ bool AnnouncementReceiver::receiveAndProcessAnnouncement() {
   }
 
   try {
-    processAnnouncement(buffer, received, sender_addr);
+    processAnnouncement_(buffer, received, sender_addr);
     return true;
   } catch (const std::exception &e) {
     return false;
   }
 }
 
-void AnnouncementReceiver::processAnnouncement(
+void AnnouncementReceiver::processAnnouncement_(
     const std::vector<uint8_t> &buffer, size_t size,
     const struct sockaddr_in &sender_addr) {
-  AnnounceMessage message = parseAnnounceMessage(buffer, size);
+  AnnounceMessage message = parseAnnounceMessage_(buffer, size);
 
   this->resource_manager_->addOrUpdateNodeResources(
       sender_addr, message.resources, message.timestamp);
 }
 
 AnnounceMessage
-AnnouncementReceiver::parseAnnounceMessage(const std::vector<uint8_t> &buffer,
-                                           size_t size) {
+AnnouncementReceiver::parseAnnounceMessage_(const std::vector<uint8_t> &buffer,
+                                            size_t size) {
   if (size < sizeof(uint32_t) + sizeof(uint64_t) + sizeof(uint32_t)) {
     throw std::runtime_error("Invalid datagram header");
   }
@@ -145,7 +145,7 @@ AnnouncementReceiver::parseAnnounceMessage(const std::vector<uint8_t> &buffer,
 void AnnouncementReceiver::run() {
   this->running_ = true;
   while (this->running_) {
-    this->receiveAndProcessAnnouncement();
+    this->receiveAndProcessAnnouncement_();
   }
 }
 

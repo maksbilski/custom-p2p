@@ -20,12 +20,12 @@ AnnouncementBroadcaster::AnnouncementBroadcaster(
   this->resource_manager_ = resource_manager;
   this->port_ = port;
   this->broadcast_interval_ = broadcast_interval;
-  this->initializeSocket(reuse_port);
+  this->initializeSocket_(reuse_port);
 };
 
 AnnouncementBroadcaster::~AnnouncementBroadcaster() { close(this->socket_); };
 
-void AnnouncementBroadcaster::initializeSocket(bool reuse_port) {
+void AnnouncementBroadcaster::initializeSocket_(bool reuse_port) {
   this->socket_ = socket(AF_INET, SOCK_DGRAM, 0);
   if (this->socket_ < 0) {
     throw std::runtime_error("Failed to create socket: " +
@@ -65,7 +65,8 @@ void AnnouncementBroadcaster::initializeSocket(bool reuse_port) {
                              std::string(strerror(errno)));
   }
 };
-AnnounceMessage AnnouncementBroadcaster::createAnnounceMessage() const {
+
+AnnounceMessage AnnouncementBroadcaster::createAnnounceMessage_() const {
   AnnounceMessage message;
   auto local_resources = this->resource_manager_->getAllResources();
   message.timestamp =
@@ -93,8 +94,8 @@ AnnounceMessage AnnouncementBroadcaster::createAnnounceMessage() const {
   return message;
 };
 
-void AnnouncementBroadcaster::broadcastAnnouncement() const {
-  AnnounceMessage message = this->createAnnounceMessage();
+void AnnouncementBroadcaster::broadcastAnnouncement_() const {
+  AnnounceMessage message = this->createAnnounceMessage_();
   if (message.resourceCount < 1) {
     return;
   }
@@ -128,7 +129,7 @@ void AnnouncementBroadcaster::broadcastAnnouncement() const {
 void AnnouncementBroadcaster::run() {
   this->running_ = true;
   while (this->running_) {
-    this->broadcastAnnouncement();
+    this->broadcastAnnouncement_();
     std::this_thread::sleep_for(this->broadcast_interval_);
   }
 };

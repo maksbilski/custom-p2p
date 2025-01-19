@@ -26,15 +26,15 @@ public:
   void stop();
 
 private:
-  void initializeSocket(int socket_timeout, bool reuse_port);
+  void initializeSocket_(int socket_timeout, bool reuse_port);
 
-  bool receiveAndProcessAnnouncement();
+  bool receiveAndProcessAnnouncement_();
 
-  void processAnnouncement(const std::vector<uint8_t> &buffer, size_t size,
-                           const struct sockaddr_in &sender_addr);
+  void processAnnouncement_(const std::vector<uint8_t> &buffer, size_t size,
+                            const struct sockaddr_in &sender_addr);
 
-  AnnounceMessage parseAnnounceMessage(const std::vector<uint8_t> &buffer,
-                                       size_t size);
+  AnnounceMessage parseAnnounceMessage_(const std::vector<uint8_t> &buffer,
+                                        size_t size);
 
   std::shared_ptr<RemoteResourceManager> resource_manager_;
   uint16_t port_;

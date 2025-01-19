@@ -1,6 +1,6 @@
 #pragma once
-
 #include "local_resource_manager.hpp"
+#include "remote_resource_manager.hpp"
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -10,12 +10,6 @@
 #include <vector>
 
 namespace p2p {
-
-typedef struct {
-  uint32_t nameLength;
-  std::string name;
-  uint32_t size;
-} Resource;
 
 typedef struct {
   uint32_t datagramLength;
@@ -28,7 +22,8 @@ class AnnouncementBroadcaster {
 public:
   AnnouncementBroadcaster(
       std::shared_ptr<LocalResourceManager> resource_manager, uint16_t port,
-      std::chrono::seconds broadcast_interval = std::chrono::seconds(30));
+      std::chrono::seconds broadcast_interval = std::chrono::seconds(30),
+      bool reuse_port = false);
 
   ~AnnouncementBroadcaster();
 
@@ -40,11 +35,11 @@ public:
   void stop();
 
 private:
+  void initializeSocket(bool reuse_port);
+
   AnnounceMessage createAnnounceMessage() const;
 
   void broadcastAnnouncement() const;
-
-  void initializeSocket();
 
   std::shared_ptr<LocalResourceManager> resource_manager_;
   uint16_t port_;

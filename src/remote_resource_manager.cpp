@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <chrono>
+#include <mutex>
 #include <netinet/in.h>
 #include <p2p-resource-sync/remote_resource_manager.hpp>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -16,6 +18,7 @@ bool RemoteResourceManager::SockAddrCompare::operator()(
 
 std::vector<std::pair<struct sockaddr_in, RemoteResource>>
 RemoteResourceManager::getAllResources() const {
+  std::shared_lock lock(this->mutex);
   std::vector<std::pair<struct sockaddr_in, RemoteResource>> resources;
   for (const auto &[node_addr, node_data] : this->nodes) {
     for (const auto &resource : node_data.resources) {
@@ -28,6 +31,7 @@ RemoteResourceManager::getAllResources() const {
 void RemoteResourceManager::addOrUpdateNodeResources(
     const struct sockaddr_in &node_address,
     const std::vector<RemoteResource> &resources) {
+  std::unique_lock lock(this->mutex);
   this->nodes[node_address] =
       RemoteNode{.resources = resources,
                  .last_announcement = std::chrono::system_clock::now()};
@@ -37,6 +41,9 @@ void RemoteResourceManager::addOrUpdateNodeResources(
 bool RemoteResourceManager::hasResource(
     const struct sockaddr_in &node_address,
     const std::string &resource_name) const {
+
+  std::shared_lock lock(this->mutex);
+
   auto node_it = nodes.find(node_address);
   if (node_it == nodes.end())
     return false;
@@ -51,6 +58,8 @@ bool RemoteResourceManager::hasResource(
 
 std::vector<struct sockaddr_in> RemoteResourceManager::findNodesWithResource(
     const std::string &resource_name) const {
+
+  std::shared_lock lock(this->mutex);
   std::vector<struct sockaddr_in> found_nodes;
 
   for (const auto &[node_addr, node_info] : this->nodes) {
@@ -66,4 +75,15 @@ std::vector<struct sockaddr_in> RemoteResourceManager::findNodesWithResource(
   return found_nodes;
 };
 
+void RemoteResourceManager::cleanupStaleNodes() {
+  std::unique_lock lock(this->mutex);
+  auto now = std::chrono::system_clock::now();
+  for (auto it = nodes.begin(); it != nodes.end();) {
+    if (now - it->second.last_announcement >= this->cleanup_interval) {
+      it = this->nodes.erase(it);
+    } else {
+      ++it;
+    }
+  }
+};
 } // namespace p2p

@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <p2p-resource-sync/announcement_broadcaster.hpp>
 #include <string>
@@ -13,30 +14,19 @@ namespace p2p {
 
 AnnouncementReceiver::AnnouncementReceiver(
     std::shared_ptr<RemoteResourceManager> resource_manager, uint16_t port,
-    int socket_timeout, bool reuse_port) {
+    int socket_timeout) {
   this->resource_manager_ = resource_manager;
   this->port_ = port;
-  this->initializeSocket_(socket_timeout, reuse_port);
+  this->initializeSocket_(socket_timeout);
 };
 
 AnnouncementReceiver::~AnnouncementReceiver() { close(this->socket_); };
 
-void AnnouncementReceiver::initializeSocket_(int socket_timeout,
-                                             bool reuse_port) {
+void AnnouncementReceiver::initializeSocket_(int socket_timeout) {
   this->socket_ = socket(AF_INET, SOCK_DGRAM, 0);
   if (this->socket_ < 0) {
     throw std::runtime_error("Failed to create socket: " +
                              std::string(strerror(errno)));
-  }
-
-  if (reuse_port) {
-    int reuse = 1;
-    if (setsockopt(this->socket_, SOL_SOCKET, SO_REUSEPORT, &reuse,
-                   sizeof(reuse)) < 0) {
-      close(this->socket_);
-      throw std::runtime_error("Failed to set SO_REUSEPORT: " +
-                               std::string(strerror(errno)));
-    }
   }
 
   struct timeval tv;
@@ -49,7 +39,7 @@ void AnnouncementReceiver::initializeSocket_(int socket_timeout,
   }
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(port_);
+  addr.sin_port = htons(this->port_);
   addr.sin_addr.s_addr = INADDR_ANY;
 
   if (bind(this->socket_, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -83,6 +73,7 @@ bool AnnouncementReceiver::receiveAndProcessAnnouncement_() {
 void AnnouncementReceiver::processAnnouncement_(
     const std::vector<uint8_t> &buffer, size_t size,
     const struct sockaddr_in &sender_addr) {
+
   AnnounceMessage message = parseAnnounceMessage_(buffer, size);
 
   this->resource_manager_->addOrUpdateNodeResources(

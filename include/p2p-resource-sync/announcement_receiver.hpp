@@ -13,8 +13,7 @@ namespace p2p {
 class AnnouncementReceiver {
 public:
   AnnouncementReceiver(std::shared_ptr<RemoteResourceManager> resource_manager,
-                       uint16_t port, int socket_timeout = 1,
-                       bool reuse_port = false);
+                       uint16_t port, int socket_timeout = 1);
 
   ~AnnouncementReceiver();
 
@@ -26,7 +25,7 @@ public:
   void stop();
 
 private:
-  void initializeSocket_(int socket_timeout, bool reuse_port);
+  void initializeSocket_(int socket_timeout);
 
   bool receiveAndProcessAnnouncement_();
 

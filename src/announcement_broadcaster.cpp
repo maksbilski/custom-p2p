@@ -16,16 +16,16 @@ namespace p2p {
 
 AnnouncementBroadcaster::AnnouncementBroadcaster(
     std::shared_ptr<LocalResourceManager> resource_manager, uint16_t port,
-    std::chrono::seconds broadcast_interval, bool reuse_port) {
+    uint16_t broadcast_port, std::chrono::seconds broadcast_interval) {
   this->resource_manager_ = resource_manager;
   this->port_ = port;
   this->broadcast_interval_ = broadcast_interval;
-  this->initializeSocket_(reuse_port);
+  this->initializeSocket_(broadcast_port);
 };
 
 AnnouncementBroadcaster::~AnnouncementBroadcaster() { close(this->socket_); };
 
-void AnnouncementBroadcaster::initializeSocket_(bool reuse_port) {
+void AnnouncementBroadcaster::initializeSocket_(uint16_t broadcast_port) {
   this->socket_ = socket(AF_INET, SOCK_DGRAM, 0);
   if (this->socket_ < 0) {
     throw std::runtime_error("Failed to create socket: " +
@@ -40,18 +40,8 @@ void AnnouncementBroadcaster::initializeSocket_(bool reuse_port) {
                              std::string(strerror(errno)));
   }
 
-  if (reuse_port) {
-    int reuse = 1;
-    if (setsockopt(this->socket_, SOL_SOCKET, SO_REUSEPORT, &reuse,
-                   sizeof(reuse)) < 0) {
-      close(this->socket_);
-      throw std::runtime_error("Failed to set SO_REUSEADDR: " +
-                               std::string(strerror(errno)));
-    }
-  }
-
   this->broadcast_address_.sin_family = AF_INET;
-  this->broadcast_address_.sin_port = htons(this->port_);
+  this->broadcast_address_.sin_port = htons(broadcast_port);
   this->broadcast_address_.sin_addr.s_addr = INADDR_BROADCAST;
 
   struct sockaddr_in addr;

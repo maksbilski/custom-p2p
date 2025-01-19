@@ -22,8 +22,8 @@ class AnnouncementBroadcaster {
 public:
   AnnouncementBroadcaster(
       std::shared_ptr<LocalResourceManager> resource_manager, uint16_t port,
-      std::chrono::seconds broadcast_interval = std::chrono::seconds(30),
-      bool reuse_port = false);
+      uint16_t broadcast_port,
+      std::chrono::seconds broadcast_interval = std::chrono::seconds(30));
 
   ~AnnouncementBroadcaster();
 
@@ -35,7 +35,7 @@ public:
   void stop();
 
 private:
-  void initializeSocket_(bool reuse_port);
+  void initializeSocket_(uint16_t broadcast_port);
 
   AnnounceMessage createAnnounceMessage_() const;
 

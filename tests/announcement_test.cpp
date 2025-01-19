@@ -93,9 +93,4 @@ TEST_F(AnnouncementTest, BroadcastsMessageWithResource) {
 
   remote_resources = remote_manager_ref->getAllResources();
   EXPECT_TRUE(remote_resources.empty());
-  for (const auto &[addr, resource] : remote_resources) {
-    std::cout << "Address: " << inet_ntoa(addr.sin_addr) << ":"
-              << ntohs(addr.sin_port) << " Resource: " << resource.name
-              << " Size: " << resource.size << std::endl;
-  }
 }

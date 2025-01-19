@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <stdexcept>
+#include <atomic>
 
 namespace p2p {
 /**
@@ -41,6 +42,9 @@ public:
      * Loop continues until server shutdown is requested.
      */
     void run();
+    void stop();
+    int getServerSocket();
+
 
 private:
     /**
@@ -67,7 +71,12 @@ private:
     void handleClient_(int client_socket);
 
     std::shared_ptr<LocalResourceManager> resource_manager_;
+    int server_socket_;
     const int port_;
     const int max_clients_;
-};
+    std::atomic<bool> should_stop_{false};
+};    
+
+static void (*signal_handler(TcpServer* server))(int); 
 } // namespace p2p
+//

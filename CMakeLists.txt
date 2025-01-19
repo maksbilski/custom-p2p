@@ -8,10 +8,12 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Main library
 message(STATUS "Configuring main library...")
 add_library(p2p_resource_sync
     "src/local_resource_manager.cpp"
+    "src/remote_resource_manager.cpp"
 )
 
 message(STATUS "Setting include directories...")
@@ -41,6 +43,7 @@ find_package(GTest REQUIRED)
 message(STATUS "Configuring test executable...")
 add_executable(p2p_resource_sync_tests
     "tests/local_resource_manager_test.cpp"
+    "tests/remote_resource_manager_test.cpp"
 )
 
 message(STATUS "Linking test executable...")

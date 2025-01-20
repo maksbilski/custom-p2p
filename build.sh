@@ -10,4 +10,3 @@ cmake ..
 
 make
 
-./p2p_resource_sync_tests

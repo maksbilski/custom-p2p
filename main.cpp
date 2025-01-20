@@ -28,7 +28,7 @@ public:
                      broadcast_port),
         receiver_(remote_resource_manager_, node_id, broadcast_port),
         tcp_server_(local_resource_manager_, tcp_port),
-        downloader_("/home/mrozek/Downloads/"), tcp_port_(tcp_port) {
+        downloader_("downloads/"), tcp_port_(tcp_port) {
 
     this->broadcaster_thread_ = std::jthread([this]() { broadcaster_.run(); });
     this->receiver_thread_ = std::jthread([this]() { receiver_.run(); });
@@ -160,8 +160,7 @@ private:
           this->downloader_.downloadResource(ip, this->tcp_port_, name);
       if (success) {
         std::cout << "Download completed successfully\n";
-        this->local_resource_manager_->addResource(
-            name, "/home/mrozek/Downloads/" + name);
+        this->local_resource_manager_->addResource(name, "downloads/" + name);
       } else {
         std::cout << "Download failed\n";
       }

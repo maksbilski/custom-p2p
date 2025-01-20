@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.14)
 project(p2p_resource_sync)
-
 message(STATUS "Configuring project: ${PROJECT_NAME}")
+
+# Build options
+option(BUILD_TESTS "Build test executables" OFF)
+message(STATUS "Build tests: ${BUILD_TESTS}")
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Main library
@@ -37,52 +39,54 @@ target_link_libraries(p2p_resource_sync_app
     PRIVATE p2p_resource_sync
 )
 
-# Testing
-message(STATUS "Configuring testing...")
-enable_testing()
-
-# Find GTest package
-find_package(GTest REQUIRED)
-
-# Function to create test target
-function(add_test_executable TEST_NAME TEST_SOURCE)
-    message(STATUS "Configuring test: ${TEST_NAME}")
-    add_executable(${TEST_NAME} ${TEST_SOURCE})
-    target_link_libraries(${TEST_NAME}
+# Testing section
+if(BUILD_TESTS)
+    message(STATUS "Configuring testing...")
+    enable_testing()
+    
+    # Find GTest package
+    find_package(GTest REQUIRED)
+    
+    # Function to create test target
+    function(add_test_executable TEST_NAME TEST_SOURCE)
+        message(STATUS "Configuring test: ${TEST_NAME}")
+        add_executable(${TEST_NAME} ${TEST_SOURCE})
+        target_link_libraries(${TEST_NAME}
+            PRIVATE p2p_resource_sync
+            PRIVATE GTest::GTest
+            PRIVATE GTest::Main
+        )
+        gtest_discover_tests(${TEST_NAME}
+            PROPERTIES
+            ENVIRONMENT GTEST_COLOR=1
+            VERBOSITY verbose
+        )
+    endfunction()
+    
+    # Individual test targets
+    add_test_executable(resource_downloader_test "tests/resource_downloader_test.cpp")
+    add_test_executable(local_resource_manager_test "tests/local_resource_manager_test.cpp")
+    add_test_executable(remote_resource_manager_test "tests/remote_resource_manager_test.cpp")
+    add_test_executable(tcp_server_test "tests/tcp_server_test.cpp")
+    add_test_executable(announcement_test "tests/announcement_test.cpp")
+    
+    # All tests target (optional)
+    message(STATUS "Configuring all tests executable...")
+    add_executable(p2p_resource_sync_tests
+        "tests/local_resource_manager_test.cpp"
+        "tests/remote_resource_manager_test.cpp"
+        "tests/announcement_test.cpp"
+        "tests/tcp_server_test.cpp"
+        "tests/resource_downloader_test.cpp"
+    )
+    
+    message(STATUS "Linking all tests executable...")
+    target_link_libraries(p2p_resource_sync_tests
         PRIVATE p2p_resource_sync
         PRIVATE GTest::GTest
         PRIVATE GTest::Main
     )
-    gtest_discover_tests(${TEST_NAME}
-        PROPERTIES
-        ENVIRONMENT GTEST_COLOR=1
-        VERBOSITY verbose
-    )
-endfunction()
+    gtest_discover_tests(p2p_resource_sync_tests)
+endif()
 
-# Individual test targets
-add_test_executable(resource_downloader_test "tests/resource_downloader_test.cpp")
-add_test_executable(local_resource_manager_test "tests/local_resource_manager_test.cpp")
-add_test_executable(remote_resource_manager_test "tests/remote_resource_manager_test.cpp")
-add_test_executable(tcp_server_test "tests/tcp_server_test.cpp")
-add_test_executable(announcement_test "tests/announcement_test.cpp")
-
-# All tests target (optional)
-message(STATUS "Configuring all tests executable...")
-add_executable(p2p_resource_sync_tests
-    "tests/local_resource_manager_test.cpp"
-    "tests/remote_resource_manager_test.cpp"
-    "tests/announcement_test.cpp"
-    "tests/tcp_server_test.cpp"
-    "tests/resource_downloader_test.cpp"
-)
-
-message(STATUS "Linking all tests executable...")
-target_link_libraries(p2p_resource_sync_tests
-    PRIVATE p2p_resource_sync
-    PRIVATE GTest::GTest
-    PRIVATE GTest::Main
-)
-
-gtest_discover_tests(p2p_resource_sync_tests)
 message(STATUS "Configuration complete")

@@ -1,17 +1,19 @@
-version: '3.8'
+version: "3.8"
 
 services:
   p2p_node1:
     build:
       context: .
       dockerfile: Dockerfile
+    stdin_open: true
+    tty: true
     ports:
-      - "12346:12346/tcp"
-      - "12345:12345/udp"
+      - "12346:8080/tcp"
+      - "12345:12346/udp"
     volumes:
       - ./node1_data:/app/downloads
       - ./node1_shared:/app/shared
-    command: ["12346", "12345"]
+    command: ["1", "12346", "12345", "8080"]
     networks:
       - p2p_network
 
@@ -19,13 +21,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    stdin_open: true
+    tty: true
     ports:
-      - "12348:12346/tcp"
-      - "12347:12345/udp"
+      - "12348:8080/tcp"
+      - "12347:12346/udp"
     volumes:
       - ./node2_data:/app/downloads
       - ./node2_shared:/app/shared
-    command: ["12346", "12345"]
+    command: ["2", "12346", "12345", "8080"]
     networks:
       - p2p_network
 
@@ -33,13 +37,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    stdin_open: true
+    tty: true
     ports:
-      - "12350:12346/tcp"
-      - "12349:12345/udp"
+      - "12350:8080/tcp"
+      - "12349:12346/udp"
     volumes:
       - ./node3_data:/app/downloads
       - ./node3_shared:/app/shared
-    command: ["12346", "12345"]
+    command: ["3", "12346", "12345", "8080"]
     networks:
       - p2p_network
 

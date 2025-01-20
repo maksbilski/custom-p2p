@@ -6,12 +6,11 @@
  * be placed at the end of the structure.
  */
 #pragma pack(1)
+#include <cstdint>
 struct ResourceRequest {
-    uint32_t messageLength;
-    uint32_t resourceNameLength;
-    uint64_t offset;
-    char resourceName[];
+  uint32_t messageLength;
+  uint32_t resourceNameLength;
+  uint64_t offset;
+  char resourceName[];
 };
 #pragma pack()
-
-

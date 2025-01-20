@@ -78,7 +78,7 @@ void AnnouncementReceiver::processAnnouncement_(
 
   AnnounceMessage message = parseAnnounceMessage_(buffer, size);
 
-  if (message.senderId != this->node_id_)
+  if (message.senderId == this->node_id_)
     return;
 
   this->resource_manager_->addOrUpdateNodeResources(

@@ -2,7 +2,7 @@
 #include "p2p-resource-sync/announcement_receiver.hpp"
 #include "p2p-resource-sync/local_resource_manager.hpp"
 #include <arpa/inet.h>
-#include <asm-generic/socket.h>
+#include <sys/socket.h>
 #include <chrono>
 #include <cstdint>
 #include <cstring>

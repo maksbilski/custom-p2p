@@ -1,12 +1,14 @@
 #!/bin/bash
 
-rm -r build
+BUILD_TESTS=${1:-OFF}
 
-mkdir build
+mkdir -p build
 
-cd build
+cmake -B build -DBUILD_TESTS=$BUILD_TESTS
 
-cmake ..
+cmake --build build
 
-make
+if [ "$BUILD_TESTS" = "ON" ]; then
+    cd build && ctest --output-on-failure
+fi
 

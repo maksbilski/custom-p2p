@@ -40,14 +40,6 @@ int TcpServer::initializeSocket_(int port, int max_clients) {
                              std::string(strerror(errno)));
   }
 
-  int reuseport = 1;
-  if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &reuseport,
-                 sizeof(reuseport)) == -1) {
-    close(sock);
-    throw std::runtime_error("Failed to set SO_REUSEPORT: " +
-                             std::string(strerror(errno)));
-  }
-
   struct sockaddr_in server{};
   server.sin_family = AF_INET;
   server.sin_port = htons(port);
@@ -173,9 +165,6 @@ void TcpServer::run() {
     if (server_socket_ < 0) {
       throw std::runtime_error("Failed to initialize socket");
     }
-
-    std::cout << "TCP Server listening on port " << port_ << std::endl;
-    std::cout << "Waiting for clients..." << std::endl;
 
     while (!should_stop_) {
       int client_socket =

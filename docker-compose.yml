@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  p2p_node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "12346:12346/tcp"
+      - "12345:12345/udp"
+    volumes:
+      - ./node1_data:/app/downloads
+      - ./node1_shared:/app/shared
+    command: ["12346", "12345"]
+    networks:
+      - p2p_network
+
+  p2p_node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "12348:12346/tcp"
+      - "12347:12345/udp"
+    volumes:
+      - ./node2_data:/app/downloads
+      - ./node2_shared:/app/shared
+    command: ["12346", "12345"]
+    networks:
+      - p2p_network
+
+  p2p_node3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "12350:12346/tcp"
+      - "12349:12345/udp"
+    volumes:
+      - ./node3_data:/app/downloads
+      - ./node3_shared:/app/shared
+    command: ["12346", "12345"]
+    networks:
+      - p2p_network
+
+networks:
+  p2p_network:
+    driver: bridge

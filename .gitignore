@@ -37,3 +37,9 @@ build/
 .cache/
 
 test_local_files/
+node1_shared/
+node2_shared/
+node3_shared/
+node1_data/
+node2_data/
+node3_data/

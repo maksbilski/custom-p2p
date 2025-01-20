@@ -15,43 +15,56 @@
 #include <string>
 #include <thread>
 
+std::atomic<bool> shutdown_requested{false};
+
 class Application {
 public:
-  Application(uint16_t sender_port, uint16_t broadcast_port)
+  Application(uint32_t node_id, uint16_t sender_port, uint16_t broadcast_port,
+              uint16_t tcp_port)
       : local_resource_manager_(std::make_shared<p2p::LocalResourceManager>()),
         remote_resource_manager_(std::make_shared<p2p::RemoteResourceManager>(
-            std::chrono::seconds(150))),
-        broadcaster_(local_resource_manager_, 1, sender_port, broadcast_port),
-        receiver_(remote_resource_manager_, 1, broadcast_port),
-        tcp_server_(local_resource_manager_), downloader_("downloads/") {
+            std::chrono::seconds(90))),
+        broadcaster_(local_resource_manager_, node_id, sender_port,
+                     broadcast_port),
+        receiver_(remote_resource_manager_, node_id, broadcast_port),
+        tcp_server_(local_resource_manager_, tcp_port),
+        downloader_("/home/mrozek/Downloads/"), tcp_port_(tcp_port) {
 
-    // Start components in separate threads
-    broadcaster_thread_ = std::jthread([this]() { broadcaster_.run(); });
-    receiver_thread_ = std::jthread([this]() { receiver_.run(); });
-    tcp_server_thread_ = std::jthread([this]() { tcp_server_.run(); });
+    this->broadcaster_thread_ = std::jthread([this]() { broadcaster_.run(); });
+    this->receiver_thread_ = std::jthread([this]() { receiver_.run(); });
+    this->tcp_server_thread_ = std::jthread([this]() { tcp_server_.run(); });
+    this->cleanup_thread_ = std::jthread([this]() {
+      while (!shutdown_requested) {
+        remote_resource_manager_->cleanupStaleNodes();
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+      }
+    });
   }
 
   ~Application() { stop(); }
 
   void stop() {
-    broadcaster_.stop();
-    receiver_.stop();
-    if (broadcaster_thread_.joinable())
-      broadcaster_thread_.join();
-    if (receiver_thread_.joinable())
-      receiver_thread_.join();
-    if (tcp_server_thread_.joinable())
-      tcp_server_thread_.join();
+    this->broadcaster_.stop();
+    this->receiver_.stop();
+    this->tcp_server_.stop();
+    if (this->broadcaster_thread_.joinable())
+      this->broadcaster_thread_.join();
+    if (this->receiver_thread_.joinable())
+      this->receiver_thread_.join();
+    if (this->tcp_server_thread_.joinable())
+      this->tcp_server_thread_.join();
+    if (this->cleanup_thread_.joinable())
+      this->cleanup_thread_.join();
   }
 
   void run() {
-    while (running_) {
-      displayMenu();
+    while (!shutdown_requested) {
+      this->displayMenu_();
       std::string input;
       std::getline(std::cin, input);
 
       try {
-        handleUserInput(input);
+        this->handleUserInput_(input);
       } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
       }
@@ -59,7 +72,7 @@ public:
   }
 
 private:
-  void displayMenu() {
+  void displayMenu_() {
     std::cout << "\nP2P File Sharing System\n"
               << "1. List local resources\n"
               << "2. List network resources\n"
@@ -69,23 +82,23 @@ private:
               << "Enter command: ";
   }
 
-  void handleUserInput(const std::string &input) {
+  void handleUserInput_(const std::string &input) {
     int choice = std::stoi(input);
     switch (choice) {
     case 1:
-      listLocalResources();
+      this->listLocalResources();
       break;
     case 2:
-      listNetworkResources();
+      this->listRemoteResources();
       break;
     case 3:
-      addLocalResource();
+      this->addLocalResource();
       break;
     case 4:
-      downloadResource();
+      this->downloadResource();
       break;
     case 5:
-      running_ = false;
+      shutdown_requested = true;
       break;
     default:
       std::cout << "Invalid command\n";
@@ -93,7 +106,7 @@ private:
   }
 
   void listLocalResources() {
-    auto resources = local_resource_manager_->getAllResources();
+    auto resources = this->local_resource_manager_->getAllResources();
     std::cout << "\nLocal resources:\n";
     for (const auto &resource : resources) {
       std::cout << "- " << resource.first << " (" << resource.second.size
@@ -101,9 +114,9 @@ private:
     }
   }
 
-  void listNetworkResources() {
-    auto resources = remote_resource_manager_->getAllResources();
-    std::cout << "\nNetwork resources:\n";
+  void listRemoteResources() {
+    auto resources = this->remote_resource_manager_->getAllResources();
+    std::cout << "\nRemote resources:\n";
     for (const auto &[addr, resource] : resources) {
       char ip[INET_ADDRSTRLEN];
       inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
@@ -121,7 +134,7 @@ private:
     std::string name;
     std::getline(std::cin, name);
     try {
-      local_resource_manager_->addResource(path, name);
+      this->local_resource_manager_->addResource(name, path);
       std::cout << "Resource added successfully\n";
     } catch (const std::exception &e) {
       std::cout << "Failed to add resource: " << e.what() << "\n";
@@ -133,22 +146,22 @@ private:
     std::string name;
     std::getline(std::cin, name);
 
-    auto nodes = remote_resource_manager_->findNodesWithResource(name);
+    auto nodes = this->remote_resource_manager_->findNodesWithResource(name);
     if (nodes.empty()) {
-      std::cout << "Resource not found in network\n";
+      std::cout << "Resource not found \n";
       return;
     }
 
-    // Use first available node
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(nodes[0].sin_addr), ip, INET_ADDRSTRLEN);
-    int port = ntohs(nodes[0].sin_port);
 
     try {
-      bool success = downloader_.downloadResource(ip, port, name);
+      bool success =
+          this->downloader_.downloadResource(ip, this->tcp_port_, name);
       if (success) {
         std::cout << "Download completed successfully\n";
-        local_resource_manager_->addResource("downloads/" + name, name);
+        this->local_resource_manager_->addResource(
+            name, "/home/mrozek/Downloads/" + name);
       } else {
         std::cout << "Download failed\n";
       }
@@ -166,31 +179,31 @@ private:
   std::jthread broadcaster_thread_;
   std::jthread receiver_thread_;
   std::jthread tcp_server_thread_;
-  std::atomic<bool> running_{true};
+  std::jthread cleanup_thread_;
+  uint16_t tcp_port_;
 };
-
-std::atomic<bool> shutdown_requested{false};
 
 void signalHandler(int) { shutdown_requested = true; }
 
 int main(int argc, char *argv[]) {
   try {
-    if (argc != 3) {
-      std::cerr << "Usage: " << argv[0] << " <sender_port> <broadcast_port\n";
+    if (argc != 5) {
+      std::cerr << "Usage: " << argv[0]
+                << " <node_id> <udp_port> <broadcast_port> <tcp_port>\n";
       return 1;
     }
 
-    uint16_t sender_port = static_cast<uint16_t>(std::stoi(argv[1]));
-    uint16_t broadcast_port = static_cast<uint16_t>(std::stoi(argv[2]));
+    uint32_t node_id = static_cast<uint16_t>(std::stoi(argv[1]));
+    uint16_t sender_port = static_cast<uint16_t>(std::stoi(argv[2]));
+    uint16_t broadcast_port = static_cast<uint16_t>(std::stoi(argv[3]));
+    uint16_t tcp_port = static_cast<uint16_t>(std::stoi(argv[4]));
 
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
-    Application app(sender_port, broadcast_port);
+    Application app(node_id, sender_port, broadcast_port, tcp_port);
 
-    while (!shutdown_requested) {
-      app.run();
-    }
+    app.run();
 
     std::cout << "\nShutting down...\n";
     app.stop();

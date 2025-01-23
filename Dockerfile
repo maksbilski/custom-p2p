@@ -18,7 +18,8 @@ FROM alpine:3.19
 
 RUN apk add --no-cache \
     libstdc++ \
-    libgcc
+    libgcc \
+    iproute2
 
 COPY --from=builder /app/build/p2p_resource_sync_app /app/p2p_resource_sync_app
 

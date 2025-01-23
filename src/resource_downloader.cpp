@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -7,12 +8,13 @@
 #include <p2p-resource-sync/resource_downloader.hpp>
 #include <stdexcept>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 namespace p2p {
 ResourceDownloader::ResourceDownloader(const std::string &download_dir,
-                                       uint32_t connect_timeout_ms)
-    : download_dir_(download_dir), connect_timeout_ms_(connect_timeout_ms) {}
+                                       uint32_t socket_timeout_ms)
+    : download_dir_(download_dir), socket_timeout_ms_(socket_timeout_ms) {}
 
 int ResourceDownloader::initialize_socket_(const std::string &host,
                                            int port) const {
@@ -20,6 +22,22 @@ int ResourceDownloader::initialize_socket_(const std::string &host,
   if (sock == -1) {
     throw std::runtime_error("Error opening socket");
   }
+  struct timeval timeout;
+  timeout.tv_sec = this->socket_timeout_ms_ / 1000;
+  timeout.tv_usec = (this->socket_timeout_ms_ % 1000) * 1000;
+
+  if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) <
+      0) {
+    close(sock);
+    throw std::runtime_error("Error setting receive timeout");
+  }
+
+  if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) <
+      0) {
+    close(sock);
+    throw std::runtime_error("Error setting send timeout");
+  }
+
   struct sockaddr_in server;
   struct hostent *hp;
 
@@ -97,19 +115,26 @@ ResourceDownloader::receive_initial_response_(int sock) const {
   return {true, file_size};
 }
 
-void ResourceDownloader::receive_file_(int sock,
-                                       const std::string &resource_name,
-                                       uint64_t file_size) const {
+uint64_t ResourceDownloader::receive_file_(int sock, uint64_t offset,
+                                           const std::string &resource_name,
+                                           uint64_t file_size) const {
   std::filesystem::path file_path =
       std::filesystem::path(download_dir_) / resource_name;
 
-  std::ofstream file(file_path, std::ios::binary);
+  std::ofstream file(file_path,
+                     std::ios::binary |
+                         (offset > 0 ? std::ios::app : std::ios::trunc));
   if (!file) {
     throw std::runtime_error("Failed to create output file");
   }
 
+  if (offset > 0) {
+    file.seekp(offset);
+  }
+
   char buffer[4096];
-  uint64_t total_received = 0;
+  uint64_t total_received = offset;
+  int last_percentage = -1;
 
   while (total_received < file_size) {
     size_t to_receive = std::min(
@@ -117,7 +142,7 @@ void ResourceDownloader::receive_file_(int sock,
 
     ssize_t received = recv(sock, buffer, to_receive, 0);
     if (received <= 0) {
-      throw std::runtime_error("Failed to receive file data");
+      return total_received;
     }
 
     file.write(buffer, received);
@@ -126,33 +151,66 @@ void ResourceDownloader::receive_file_(int sock,
     }
 
     total_received += received;
+
+    int current_percentage =
+        static_cast<int>((total_received * 100) / file_size);
+    if (current_percentage != last_percentage) {
+      std::cout << "\rDownloading: " << total_received << "/" << file_size
+                << " bytes (" << current_percentage << "%)    " << std::flush;
+      last_percentage = current_percentage;
+    }
   }
+  return total_received;
 }
 
-bool ResourceDownloader::downloadResource(const std::string &peer_addr,
-                                          int peer_port,
-                                          const std::string &resource_name) {
-  int sock = initialize_socket_(peer_addr, peer_port);
+std::pair<uint64_t, uint64_t>
+ResourceDownloader::downloadResource(const std::string &peer_addr,
+                                     int peer_port, uint64_t offset,
+                                     const std::string &resource_name) {
+  std::cout << "Downloading " << resource_name << " from " << peer_addr
+            << std::endl;
+  const int MAX_RETRIES = 5;
+  uint64_t current_offset = offset;
+  uint64_t file_size = 0;
 
-  try {
-    send_resource_request_(sock, 0, resource_name);
-
-    auto [exists, file_size] = receive_initial_response_(sock);
-
-    if (!exists) {
-      close(sock);
-      return false;
+  for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      std::cout << "Retrying download (attempt " << attempt + 1 << "/"
+                << MAX_RETRIES << ") from offset " << current_offset
+                << std::endl;
     }
 
-    receive_file_(sock, resource_name, file_size);
+    try {
+      int sock = initialize_socket_(peer_addr, peer_port);
+      send_resource_request_(sock, current_offset, resource_name);
 
-    close(sock);
-    return true;
-  } catch (const std::exception &e) {
-    std::cerr << "Error during download: " << e.what() << std::endl;
-    close(sock);
-    throw;
+      auto [exists, size] = receive_initial_response_(sock);
+      if (!exists) {
+        close(sock);
+        return {0, 0};
+      }
+
+      file_size = size;
+      current_offset =
+          receive_file_(sock, current_offset, resource_name, file_size);
+      close(sock);
+
+      if (current_offset == file_size) {
+        return {current_offset, file_size};
+      }
+      std::cout << "Download incomplete (attempt " << attempt + 1
+                << "): " << current_offset << "/" << file_size << " bytes"
+                << std::endl;
+
+    } catch (const std::exception &e) {
+      std::cerr << "Error during download (attempt " << attempt + 1
+                << "): " << e.what() << std::endl;
+      if (attempt == MAX_RETRIES - 1) {
+        throw;
+      }
+    }
   }
+  return {current_offset, file_size};
 }
 
 } // namespace p2p

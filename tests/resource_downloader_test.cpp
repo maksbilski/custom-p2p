@@ -1,5 +1,6 @@
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -151,9 +152,9 @@ protected:
 };
 
 TEST_F(ResourceDownloaderTest, CanDownloadExistingResource) {
-  bool result =
-      downloader->downloadResource("127.0.0.1", server_port, "test.txt");
-  EXPECT_TRUE(result);
+  auto [received, total_size] =
+      downloader->downloadResource("127.0.0.1", server_port, 0, "test.txt");
+  EXPECT_TRUE(received == total_size);
 
   std::string downloaded_file = download_dir + "/test.txt";
   std::string original_file = test_file_path;
@@ -167,7 +168,7 @@ TEST_F(ResourceDownloaderTest, CanDownloadExistingResource) {
 TEST_F(ResourceDownloaderTest, ConcurrentDownloadsStressTest) {
   const int NUM_CLIENTS = 25;
   std::vector<std::unique_ptr<p2p::ResourceDownloader>> downloaders;
-  std::vector<std::future<bool>> download_futures;
+  std::vector<std::future<std::pair<uint64_t, uint64_t>>> download_futures;
 
   for (int i = 0; i < NUM_CLIENTS; ++i) {
     std::string client_dir = download_dir + "/client_" + std::to_string(i);
@@ -181,14 +182,14 @@ TEST_F(ResourceDownloaderTest, ConcurrentDownloadsStressTest) {
   for (int i = 0; i < NUM_CLIENTS; ++i) {
     download_futures.push_back(
         std::async(std::launch::async, [&downloaders, i, this]() {
-          return downloaders[i]->downloadResource("127.0.0.1", server_port,
+          return downloaders[i]->downloadResource("127.0.0.1", server_port, 0,
                                                   "test.txt");
         }));
   }
 
   std::vector<bool> results;
   for (auto &future : download_futures) {
-    results.push_back(future.get());
+    results.push_back(future.get().first == future.get().second);
   }
 
   auto end_time = std::chrono::steady_clock::now();

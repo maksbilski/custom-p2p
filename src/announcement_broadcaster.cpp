@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <netinet/in.h>
@@ -125,8 +126,12 @@ void AnnouncementBroadcaster::broadcastAnnouncement_() const {
 void AnnouncementBroadcaster::run() {
   this->running_ = true;
   while (this->running_) {
-    this->broadcastAnnouncement_();
-    std::this_thread::sleep_for(this->broadcast_interval_);
+    try {
+      this->broadcastAnnouncement_();
+      std::this_thread::sleep_for(this->broadcast_interval_);
+    } catch (const std::exception &e) {
+      std::cerr << "Error: " << e.what() << std::endl;
+    }
   }
 };
 

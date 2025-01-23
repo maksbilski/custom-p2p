@@ -15,26 +15,28 @@ namespace p2p {
 
 AnnouncementReceiver::AnnouncementReceiver(
     std::shared_ptr<RemoteResourceManager> resource_manager, uint32_t node_id,
-    uint16_t port, int socket_timeout) {
+    uint16_t port, int socket_timeout_ms) {
   this->resource_manager_ = resource_manager;
   this->node_id_ = node_id;
   this->port_ = port;
-  this->initializeSocket_(socket_timeout);
+  this->initializeSocket_(socket_timeout_ms);
 };
 
 AnnouncementReceiver::~AnnouncementReceiver() { close(this->socket_); };
 
-void AnnouncementReceiver::initializeSocket_(int socket_timeout) {
+void AnnouncementReceiver::initializeSocket_(int socket_timeout_ms) {
   this->socket_ = socket(AF_INET, SOCK_DGRAM, 0);
   if (this->socket_ < 0) {
     throw std::runtime_error("Failed to create socket: " +
                              std::string(strerror(errno)));
   }
 
-  struct timeval tv;
-  tv.tv_sec = socket_timeout;
-  tv.tv_usec = 0;
-  if (setsockopt(socket_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+  struct timeval timeout;
+  timeout.tv_sec = socket_timeout_ms / 1000;
+  timeout.tv_usec = (socket_timeout_ms % 1000) * 1000;
+
+  if (setsockopt(socket_, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) <
+      0) {
     close(socket_);
     throw std::runtime_error("Failed to set socket timeout: " +
                              std::string(strerror(errno)));

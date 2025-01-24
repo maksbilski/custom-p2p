@@ -56,6 +56,28 @@ int TcpServer::initializeSocket_(int port, int max_clients) {
   return sock;
 }
 
+void TcpServer::simulatePeriodicDrop(size_t frequency) {
+    should_simulate_periodic_drop_ = true;
+    drop_frequency_ = frequency;
+}
+
+void TcpServer::sendChunk_(int client_socket, const char* data, size_t length, size_t& total_sent) {
+    size_t bytes_sent = 0;
+    while (bytes_sent < length) {
+        ssize_t sent = send(client_socket, 
+                          data + bytes_sent, 
+                          length - bytes_sent, 
+                          0);
+        
+        if (sent <= 0) {
+            throw std::runtime_error("Failed to send data");
+        }
+        
+        bytes_sent += sent;
+        total_sent += sent;
+    }
+}
+
 void TcpServer::handleClient_(int client_socket) {
   try {
     uint32_t messageLength;
@@ -110,18 +132,25 @@ void TcpServer::handleClient_(int client_socket) {
       throw std::runtime_error("Failed to send file size");
     }
 
+    size_t total_sent = 0;
     char buffer[4096];
+    
+    int counter = 0;
     while (file.read(buffer, sizeof(buffer))) {
-      if (send(client_socket, buffer, sizeof(buffer), 0) <= 0) {
-        throw std::runtime_error("Failed to send file data");
-      }
+        sendChunk_(client_socket, buffer, sizeof(buffer), total_sent);
+        if (should_simulate_periodic_drop_ && 
+            counter % 5 == 4) {
+            std::cout << "Simulating periodic connection drop after " 
+                     << total_sent << " bytes" << std::endl;
+            shutdown(client_socket, SHUT_RDWR);
+            throw std::runtime_error("Simulated periodic connection drop");
+        }
+        counter++;
     }
 
     auto lastChunkSize = file.gcount();
     if (lastChunkSize > 0) {
-      if (send(client_socket, buffer, lastChunkSize, 0) <= 0) {
-        throw std::runtime_error("Failed to send last chunk");
-      }
+        sendChunk_(client_socket, buffer, lastChunkSize, total_sent);
     }
 
   } catch (const std::exception &e) {
@@ -167,6 +196,7 @@ void TcpServer::run() {
     }
 
     while (!should_stop_) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(2000));
       int client_socket =
           accept(server_socket_, reinterpret_cast<struct sockaddr *>(&client),
                  &client_length);

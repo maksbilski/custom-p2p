@@ -15,7 +15,7 @@ services:
     volumes:
       - ./node1_data:/app/downloads
       - ./node1_shared:/app/shared
-    command: ["1", "12346", "12345", "8080"]
+    command: ["1", "12346", "12345", "8080", "1"]
     networks:
       - p2p_network
 
@@ -33,7 +33,7 @@ services:
     volumes:
       - ./node2_data:/app/downloads
       - ./node2_shared:/app/shared
-    command: ["2", "12346", "12345", "8080"]
+    command: ["2", "12346", "12345", "8080", "1"]
     networks:
       - p2p_network
 
@@ -51,7 +51,7 @@ services:
     volumes:
       - ./node3_data:/app/downloads
       - ./node3_shared:/app/shared
-    command: ["3", "12346", "12345", "8080"]
+    command: ["3", "12346", "12345", "8080", "1"]
     networks:
       - p2p_network
 

@@ -25,9 +25,9 @@ public:
    * 10)
    */
   explicit TcpServer(std::shared_ptr<LocalResourceManager> resource_manager,
-                     int port = 8080, int max_clients = 10)
+                     int port = 8080, int max_clients = 10, bool simulate_drops = false)
       : resource_manager_(std::move(resource_manager)), port_(port),
-        max_clients_(max_clients) {}
+        max_clients_(max_clients), should_simulate_periodic_drop_(simulate_drops) {}
 
   ~TcpServer() = default;
 
@@ -45,6 +45,7 @@ public:
   void run();
   void stop();
   int getServerSocket();
+  void simulatePeriodicDrop(size_t frequency);
 
 private:
   /**
@@ -75,6 +76,10 @@ private:
   const int port_;
   const int max_clients_;
   std::atomic<bool> should_stop_{false};
+  std::atomic<bool> should_simulate_periodic_drop_;
+  size_t drop_frequency_{1000};
+  void sendChunk_(int client_socket, const char* data, size_t length, size_t& total_sent);
+
 };
 
 static void (*signal_handler(TcpServer *server))(int);

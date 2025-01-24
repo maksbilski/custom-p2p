@@ -22,14 +22,14 @@ std::atomic<bool> shutdown_requested{false};
 class Application {
 public:
   Application(uint32_t node_id, uint16_t sender_port, uint16_t broadcast_port,
-              uint16_t tcp_port)
+              uint16_t tcp_port, bool simulate_drops)
       : local_resource_manager_(std::make_shared<p2p::LocalResourceManager>()),
         remote_resource_manager_(std::make_shared<p2p::RemoteResourceManager>(
             std::chrono::seconds(60))),
         broadcaster_(local_resource_manager_, node_id, sender_port,
                      broadcast_port, std::chrono::seconds(5)),
         receiver_(remote_resource_manager_, node_id, broadcast_port),
-        tcp_server_(local_resource_manager_, tcp_port),
+        tcp_server_(local_resource_manager_, tcp_port, 10, simulate_drops),
         downloader_("downloads/"), tcp_port_(tcp_port) {
 
     this->broadcaster_thread_ = std::jthread([this]() { broadcaster_.run(); });
@@ -262,27 +262,25 @@ void signalHandler(int) { shutdown_requested = true; }
 
 int main(int argc, char *argv[]) {
   try {
-    if (argc != 5) {
+    if (argc != 5 && argc != 6) {
       std::cerr << "Usage: " << argv[0]
-                << " <node_id> <udp_port> <broadcast_port> <tcp_port>\n";
+                << " <node_id> <udp_port> <broadcast_port> <tcp_port> [simulate_drops]\n";
       return 1;
     }
     if (!std::filesystem::exists("downloads")) {
       std::filesystem::create_directories("downloads");
     }
-
     uint32_t node_id = static_cast<uint16_t>(std::stoi(argv[1]));
     uint16_t sender_port = static_cast<uint16_t>(std::stoi(argv[2]));
     uint16_t broadcast_port = static_cast<uint16_t>(std::stoi(argv[3]));
     uint16_t tcp_port = static_cast<uint16_t>(std::stoi(argv[4]));
-
+    bool simulate_drops = argc == 6 && std::stoi(argv[5]) != 0;
+    std::cout << simulate_drops;
+    
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
-
-    Application app(node_id, sender_port, broadcast_port, tcp_port);
-
+    Application app(node_id, sender_port, broadcast_port, tcp_port, simulate_drops);
     app.run();
-
     std::cout << "\nShutting down...\n";
     app.stop();
     return 0;

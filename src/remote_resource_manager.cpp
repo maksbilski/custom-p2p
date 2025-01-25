@@ -33,11 +33,21 @@ void RemoteResourceManager::addOrUpdateNodeResources(
     const struct sockaddr_in &node_address,
     const std::vector<Resource> &resources, uint64_t timestamp) {
   std::unique_lock lock(this->mutex_);
+
+  auto it = this->nodes_.find(node_address);
+  if (it != this->nodes_.end()) {
+    auto incoming_time = std::chrono::system_clock::time_point(
+        std::chrono::nanoseconds(timestamp));
+
+    if (incoming_time <= it->second.lastAnnouncementTime) {
+      return;
+    }
+  }
+
   this->nodes_[node_address] =
       RemoteNode{.resources = resources,
                  .lastAnnouncementTime = std::chrono::system_clock::time_point(
                      std::chrono::nanoseconds(timestamp))};
-  return;
 };
 
 bool RemoteResourceManager::hasResource(

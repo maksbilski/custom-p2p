@@ -1,9 +1,8 @@
 #pragma once
 #include "local_resource_manager.hpp"
+#include "constants.hpp"
 #include <atomic>
 #include <memory>
-#include <stdexcept>
-#include <string>
 
 namespace p2p {
 /**
@@ -25,13 +24,14 @@ public:
    * 10)
    */
   explicit TcpServer(std::shared_ptr<LocalResourceManager> resource_manager,
-                     int port = 8080, int max_clients = 10, bool simulate_drops = false)
+                     int port = constants::tcp_server::DEFAULT_PORT,
+                     int max_clients = constants::tcp_server::DEFAULT_MAX_CLIENTS,
+                     bool simulate_drops = false)
       : resource_manager_(std::move(resource_manager)), port_(port),
         max_clients_(max_clients), should_simulate_periodic_drop_(simulate_drops) {}
 
   ~TcpServer() = default;
 
-  // Delete copy operations
   TcpServer(const TcpServer &) = delete;
   TcpServer &operator=(const TcpServer &) = delete;
 
@@ -77,11 +77,10 @@ private:
   const int max_clients_;
   std::atomic<bool> should_stop_{false};
   std::atomic<bool> should_simulate_periodic_drop_;
-  size_t drop_frequency_{1000};
+  size_t drop_frequency_{constants::tcp_server::DEFAULT_DROP_FREQUENCY};
   void sendChunk_(int client_socket, const char* data, size_t length, size_t& total_sent);
 
 };
 
 static void (*signal_handler(TcpServer *server))(int);
 } // namespace p2p
-//

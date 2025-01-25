@@ -21,6 +21,7 @@ add_library(p2p_resource_sync
     "src/announcement_receiver.cpp"
     "src/tcp_server.cpp"
     "src/resource_downloader.cpp"
+    "src/logger.cpp"
 )
 
 message(STATUS "Setting include directories...")

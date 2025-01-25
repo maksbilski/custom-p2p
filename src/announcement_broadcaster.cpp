@@ -1,5 +1,6 @@
-#include "p2p-resource-sync/local_resource_manager.hpp"
 #include "p2p-resource-sync/constants.hpp"
+#include "p2p-resource-sync/local_resource_manager.hpp"
+#include "p2p-resource-sync/logger.hpp"
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -17,8 +18,8 @@
 namespace p2p {
 
 AnnouncementBroadcaster::AnnouncementBroadcaster(
-    const std::shared_ptr<LocalResourceManager> &resource_manager, const uint32_t node_id,
-    const uint16_t port, const uint16_t broadcast_port,
+    const std::shared_ptr<LocalResourceManager> &resource_manager,
+    const uint32_t node_id, const uint16_t port, const uint16_t broadcast_port,
     const std::chrono::seconds broadcast_interval) {
   this->resource_manager_ = resource_manager;
   this->node_id_ = node_id;
@@ -36,7 +37,8 @@ void AnnouncementBroadcaster::initializeSocket_(uint16_t broadcast_port) {
                              std::string(strerror(errno)));
   }
 
-  int broadcast_enable = constants::announcement_broadcaster::socket::BROADCAST_ENABLE;
+  int broadcast_enable =
+      constants::announcement_broadcaster::socket::BROADCAST_ENABLE;
   if (setsockopt(this->socket_, SOL_SOCKET, SO_BROADCAST, &broadcast_enable,
                  sizeof(broadcast_enable)) < 0) {
     close(this->socket_);
@@ -53,7 +55,8 @@ void AnnouncementBroadcaster::initializeSocket_(uint16_t broadcast_port) {
   addr.sin_port = htons(this->port_);
   addr.sin_addr.s_addr = INADDR_ANY;
 
-  if (bind(this->socket_, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0) {
+  if (bind(this->socket_, reinterpret_cast<struct sockaddr *>(&addr),
+           sizeof(addr)) < 0) {
     close(this->socket_);
     throw std::runtime_error("Failed to bind socket: " +
                              std::string(strerror(errno)));
@@ -97,21 +100,26 @@ void AnnouncementBroadcaster::broadcastAnnouncement_() const {
   }
   std::vector<uint8_t> buffer;
 
-  buffer.insert(buffer.end(), reinterpret_cast<uint8_t *>(&message.datagramLength),
+  buffer.insert(buffer.end(),
+                reinterpret_cast<uint8_t *>(&message.datagramLength),
                 reinterpret_cast<uint8_t *>(&message.datagramLength) +
                     sizeof(message.datagramLength));
   buffer.insert(buffer.end(), reinterpret_cast<uint8_t *>(&message.timestamp),
-                reinterpret_cast<uint8_t *>(&message.timestamp) + sizeof(message.timestamp));
+                reinterpret_cast<uint8_t *>(&message.timestamp) +
+                    sizeof(message.timestamp));
   buffer.insert(buffer.end(), reinterpret_cast<uint8_t *>(&message.senderId),
-                reinterpret_cast<uint8_t *>(&message.senderId) + sizeof(message.senderId));
-  buffer.insert(buffer.end(), reinterpret_cast<uint8_t *>(&message.resourceCount),
+                reinterpret_cast<uint8_t *>(&message.senderId) +
+                    sizeof(message.senderId));
+  buffer.insert(buffer.end(),
+                reinterpret_cast<uint8_t *>(&message.resourceCount),
                 reinterpret_cast<uint8_t *>(&message.resourceCount) +
                     sizeof(message.resourceCount));
 
   for (const auto &resource : message.resources) {
     uint32_t nameLength = resource.name.length();
     buffer.insert(buffer.end(), reinterpret_cast<uint8_t *>(&nameLength),
-                  reinterpret_cast<uint8_t *>(&nameLength) + sizeof(nameLength));
+                  reinterpret_cast<uint8_t *>(&nameLength) +
+                      sizeof(nameLength));
     buffer.insert(buffer.end(), resource.name.begin(), resource.name.end());
     buffer.insert(buffer.end(), (uint8_t *)&resource.size,
                   (uint8_t *)&resource.size + sizeof(resource.size));
@@ -122,6 +130,9 @@ void AnnouncementBroadcaster::broadcastAnnouncement_() const {
              sizeof(this->broadcast_address_)) == -1) {
     throw std::runtime_error("Failed to broadcast");
   }
+  Logger::log(LogLevel::INFO,
+              "Successfully broadcasted announcement message, size: " +
+                  std::to_string(buffer.size()) + " bytes");
 };
 
 void AnnouncementBroadcaster::run() {
@@ -130,7 +141,7 @@ void AnnouncementBroadcaster::run() {
     try {
       this->broadcastAnnouncement_();
     } catch (const std::exception &e) {
-      std::cerr << "Error: " << e.what() << std::endl;
+      Logger::log(LogLevel::ERROR, "Broadcast error: " + std::string(e.what()));
     }
     std::this_thread::sleep_for(this->broadcast_interval_);
   }

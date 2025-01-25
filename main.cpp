@@ -71,14 +71,15 @@ public:
 
 private:
   void displayMenu_() {
-    std::cout << "\nP2P File Sharing System\n"
+    std::cout << "\r"
+              << "P2P File Sharing System\n"
               << "1. List local resources\n"
               << "2. List network resources\n"
               << "3. Add local resource\n"
               << "4. Remove local resource\n"
               << "5. Download resource\n"
               << "6. Exit\n"
-              << "Enter command: ";
+              << "Enter command: " << std::flush;
   }
 
   void handleUserInput_(const std::string &input) {

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <arpa/inet.h>
 #include <atomic>
 #include <csignal>
 #include <errno.h>
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <netinet/in.h>
+#include <p2p-resource-sync/logger.hpp>
 #include <p2p-resource-sync/protocol.hpp>
 #include <p2p-resource-sync/tcp_server.hpp>
 #include <stdexcept>
@@ -44,7 +46,8 @@ int TcpServer::initializeSocket_(int port, int max_clients) {
   server.sin_family = AF_INET;
   server.sin_port = htons(port);
   server.sin_addr.s_addr = INADDR_ANY;
-  if (bind(sock, reinterpret_cast<struct sockaddr *>(&server), sizeof(server)) < 0) {
+  if (bind(sock, reinterpret_cast<struct sockaddr *>(&server), sizeof(server)) <
+      0) {
     close(sock);
     throw std::runtime_error("Binding socket failed: " +
                              std::string(strerror(errno)));
@@ -57,25 +60,24 @@ int TcpServer::initializeSocket_(int port, int max_clients) {
 }
 
 void TcpServer::simulatePeriodicDrop(size_t frequency) {
-    should_simulate_periodic_drop_ = true;
-    drop_frequency_ = frequency;
+  should_simulate_periodic_drop_ = true;
+  drop_frequency_ = frequency;
 }
 
-void TcpServer::sendChunk_(int client_socket, const char* data, size_t length, size_t& total_sent) {
-    size_t bytes_sent = 0;
-    while (bytes_sent < length) {
-        ssize_t sent = send(client_socket, 
-                          data + bytes_sent, 
-                          length - bytes_sent, 
-                          0);
-        
-        if (sent <= 0) {
-            throw std::runtime_error("Failed to send data");
-        }
-        
-        bytes_sent += sent;
-        total_sent += sent;
+void TcpServer::sendChunk_(int client_socket, const char *data, size_t length,
+                           size_t &total_sent) {
+  size_t bytes_sent = 0;
+  while (bytes_sent < length) {
+    ssize_t sent =
+        send(client_socket, data + bytes_sent, length - bytes_sent, 0);
+
+    if (sent <= 0) {
+      throw std::runtime_error("Failed to send data");
     }
+
+    bytes_sent += sent;
+    total_sent += sent;
+  }
 }
 
 void TcpServer::handleClient_(int client_socket) {
@@ -134,23 +136,25 @@ void TcpServer::handleClient_(int client_socket) {
 
     size_t total_sent = 0;
     char buffer[constants::tcp_server::BUFFER_SIZE];
-    
+
     int counter = 0;
     while (file.read(buffer, sizeof(buffer))) {
-        sendChunk_(client_socket, buffer, sizeof(buffer), total_sent);
-        if (should_simulate_periodic_drop_ && 
-            counter % constants::tcp_server::DEFAULT_DROP_FREQUENCY == constants::tcp_server::DEFAULT_DROP_FREQUENCY) {
-            std::cout << "Simulating periodic connection drop after " 
-                     << total_sent << " bytes" << std::endl;
-            shutdown(client_socket, SHUT_RDWR);
-            throw std::runtime_error("Simulated periodic connection drop");
-        }
-        counter++;
+      sendChunk_(client_socket, buffer, sizeof(buffer), total_sent);
+      if (should_simulate_periodic_drop_ &&
+          counter % constants::tcp_server::DEFAULT_DROP_FREQUENCY ==
+              constants::tcp_server::DEFAULT_DROP_FREQUENCY) {
+        Logger::log(LogLevel::INFO,
+                    "Simulating periodic connection drop after " +
+                        std::to_string(total_sent) + " bytes");
+        shutdown(client_socket, SHUT_RDWR);
+        throw std::runtime_error("Simulated periodic connection drop");
+      }
+      counter++;
     }
 
     auto lastChunkSize = file.gcount();
     if (lastChunkSize > 0) {
-        sendChunk_(client_socket, buffer, lastChunkSize, total_sent);
+      sendChunk_(client_socket, buffer, lastChunkSize, total_sent);
     }
 
   } catch (const std::exception &e) {
@@ -205,10 +209,12 @@ void TcpServer::run() {
         if (errno == EINTR) {
           continue;
         }
-        std::cerr << "Failed to accept connection: " << strerror(errno)
-                  << std::endl;
         continue;
       }
+      char client_ip[INET_ADDRSTRLEN];
+      inet_ntop(AF_INET, &(client.sin_addr), client_ip, INET_ADDRSTRLEN);
+      Logger::log(LogLevel::INFO,
+                  "New connection from " + std::string(client_ip));
 
       if (!should_stop_) {
         try {
@@ -216,18 +222,17 @@ void TcpServer::run() {
             try {
               handleClient_(client_socket);
             } catch (const std::exception &e) {
-              std::cerr << "Client handler error: " << e.what() << std::endl;
+              Logger::log(LogLevel::ERROR,
+                          std::string("Client handler error") + e.what());
             }
           });
 
           std::erase_if(client_threads,
-                        [](const std::jthread &t) {
-                          return !t.joinable();
-                        });
+                        [](const std::jthread &t) { return !t.joinable(); });
 
         } catch (const std::exception &e) {
-          std::cerr << "Failed to create client thread: " << e.what()
-                    << std::endl;
+          Logger::log(LogLevel::ERROR,
+                      std::string("Failed to create client thread") + e.what());
           close(client_socket);
         }
       }
@@ -241,7 +246,7 @@ void TcpServer::run() {
 
     close(server_socket_);
   } catch (const std::exception &e) {
-    std::cerr << "Server error: " << e.what() << std::endl;
+    Logger::log(LogLevel::ERROR, std::string("Server error:") + e.what());
     throw;
   }
 }

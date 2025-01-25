@@ -1,4 +1,5 @@
 #include "p2p-resource-sync/announcement_receiver.hpp"
+#include "p2p-resource-sync/logger.hpp"
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -71,6 +72,9 @@ void AnnouncementReceiver::receiveAndProcessAnnouncement_() {
 
   try {
     processAnnouncement_(buffer, received, sender_addr);
+    Logger::log(LogLevel::INFO,
+                "Successfully received announcement message, size: " +
+                    std::to_string(buffer.size()) + " bytes");
   } catch (const std::exception &e) {
     throw std::runtime_error("Failed to process announcement");
   }
@@ -142,7 +146,8 @@ void AnnouncementReceiver::run() {
     try {
       this->receiveAndProcessAnnouncement_();
     } catch (std::exception e) {
-      std::cerr << "Error: " << e.what() << std::endl;
+      Logger::log(LogLevel::ERROR,
+                  "Receiving Broadcast error: " + std::string(e.what()));
     }
   }
 }

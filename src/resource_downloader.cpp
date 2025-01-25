@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <netdb.h>
+#include <p2p-resource-sync/logger.hpp>
 #include <p2p-resource-sync/resource_downloader.hpp>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -92,6 +93,8 @@ void ResourceDownloader::send_resource_request_(
 
     total_sent += bytes_sent;
   }
+  Logger::log(LogLevel::INFO, "Simulating periodic connection drop after " +
+                                  std::to_string(total_sent) + " bytes");
 }
 
 std::pair<bool, uint64_t>

@@ -1,6 +1,7 @@
 #include "p2p-resource-sync/announcement_broadcaster.hpp"
 #include "p2p-resource-sync/announcement_receiver.hpp"
 #include "p2p-resource-sync/local_resource_manager.hpp"
+#include "p2p-resource-sync/logger.hpp"
 #include "p2p-resource-sync/remote_resource_manager.hpp"
 #include "p2p-resource-sync/resource_downloader.hpp"
 #include "p2p-resource-sync/tcp_server.hpp"
@@ -29,7 +30,7 @@ public:
         remote_resource_manager_(std::make_shared<p2p::RemoteResourceManager>(
             std::chrono::seconds(60))),
         broadcaster_(local_resource_manager_, node_id, sender_port,
-                     broadcast_port, std::chrono::seconds(5)),
+                     broadcast_port),
         receiver_(remote_resource_manager_, node_id, broadcast_port),
         tcp_server_(local_resource_manager_, tcp_port, 10, simulate_drops),
         downloads_path_(downloads_path), downloader_(downloads_path),
@@ -281,6 +282,7 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t node_id = static_cast<uint16_t>(std::stoi(argv[1]));
+    p2p::Logger::setNodeId(node_id);
     uint16_t sender_port = static_cast<uint16_t>(std::stoi(argv[2]));
     uint16_t broadcast_port = static_cast<uint16_t>(std::stoi(argv[3]));
     uint16_t tcp_port = static_cast<uint16_t>(std::stoi(argv[4]));

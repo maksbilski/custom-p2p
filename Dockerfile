@@ -27,5 +27,3 @@ WORKDIR /app
 
 EXPOSE 12345/udp
 EXPOSE 12346/tcp
-
-ENTRYPOINT ["./p2p_resource_sync_app"]

@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <arpa/inet.h>
 #include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <netinet/in.h>
+#include <p2p-resource-sync/logger.hpp>
 #include <p2p-resource-sync/remote_resource_manager.hpp>
 #include <shared_mutex>
 #include <string>
@@ -88,6 +90,10 @@ void RemoteResourceManager::cleanupStaleNodes() {
   auto now = std::chrono::system_clock::now();
   for (auto it = nodes_.begin(); it != nodes_.end();) {
     if (now - it->second.lastAnnouncementTime >= this->cleanup_interval_) {
+      char node_ip[INET_ADDRSTRLEN];
+      inet_ntop(AF_INET, &(it->first.sin_addr), node_ip, INET_ADDRSTRLEN);
+      Logger::log(LogLevel::INFO,
+                  "Cleaning data from node " + std::string(node_ip));
       it = this->nodes_.erase(it);
     } else {
       ++it;

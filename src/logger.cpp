@@ -2,10 +2,13 @@
 
 namespace p2p {
 
+uint32_t Logger::node_id = 0;
+
 void Logger::log(LogLevel level, const std::string &message) {
   std::string timestamp = getCurrentTimestamp();
-  fprintf(stderr, "%s [%s] %s\n", timestamp.c_str(), levelToString(level),
-          message.c_str());
+  std::string output = timestamp + " [Node " + std::to_string(node_id) + "] [" +
+                       levelToString(level) + "] " + message + "\n";
+  fputs(output.c_str(), stderr);
   fflush(stderr);
 }
 

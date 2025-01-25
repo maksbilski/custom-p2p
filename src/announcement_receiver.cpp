@@ -1,5 +1,7 @@
 #include "p2p-resource-sync/announcement_receiver.hpp"
 #include "p2p-resource-sync/logger.hpp"
+#include <arpa/inet.h>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -12,6 +14,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -72,9 +75,6 @@ void AnnouncementReceiver::receiveAndProcessAnnouncement_() {
 
   try {
     processAnnouncement_(buffer, received, sender_addr);
-    Logger::log(LogLevel::INFO,
-                "Successfully received announcement message, size: " +
-                    std::to_string(buffer.size()) + " bytes");
   } catch (const std::exception &e) {
     throw std::runtime_error("Failed to process announcement");
   }
@@ -88,6 +88,11 @@ void AnnouncementReceiver::processAnnouncement_(
 
   if (message.senderId == this->node_id_)
     return;
+  char sender_ip[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &(sender_addr.sin_addr), sender_ip, INET_ADDRSTRLEN);
+  Logger::log(LogLevel::INFO,
+              "Successfully received announcement message from: " +
+                  std::string(sender_ip));
 
   this->resource_manager_->addOrUpdateNodeResources(
       sender_addr, message.resources, message.timestamp);
@@ -147,7 +152,8 @@ void AnnouncementReceiver::run() {
       this->receiveAndProcessAnnouncement_();
     } catch (std::exception e) {
       Logger::log(LogLevel::ERROR,
-                  "Receiving Broadcast error: " + std::string(e.what()));
+                  "Receiving Broadcast error" + std::string(e.what()));
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
   }
 }

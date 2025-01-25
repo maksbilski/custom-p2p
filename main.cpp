@@ -148,7 +148,8 @@ private:
     std::getline(std::cin, name);
 
     if (!this->local_resource_manager_->removeResource(name)) {
-      std::cout << "Resource not found: " << name << std::endl;
+      std::cerr << "Failed to remove resource: Resource not found: " << name
+                << std::endl;
       return;
     }
     std::cout << "Resource removed successfully" << std::endl;
@@ -264,7 +265,8 @@ int main(int argc, char *argv[]) {
   try {
     if (argc != 5 && argc != 6) {
       std::cerr << "Usage: " << argv[0]
-                << " <node_id> <udp_port> <broadcast_port> <tcp_port> [simulate_drops]\n";
+                << " <node_id> <udp_port> <broadcast_port> <tcp_port> "
+                   "[simulate_drops]\n";
       return 1;
     }
     if (!std::filesystem::exists("downloads")) {
@@ -276,10 +278,11 @@ int main(int argc, char *argv[]) {
     uint16_t tcp_port = static_cast<uint16_t>(std::stoi(argv[4]));
     bool simulate_drops = argc == 6 && std::stoi(argv[5]) != 0;
     std::cout << simulate_drops;
-    
+
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
-    Application app(node_id, sender_port, broadcast_port, tcp_port, simulate_drops);
+    Application app(node_id, sender_port, broadcast_port, tcp_port,
+                    simulate_drops);
     app.run();
     std::cout << "\nShutting down...\n";
     app.stop();

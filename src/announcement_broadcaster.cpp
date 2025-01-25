@@ -128,10 +128,10 @@ void AnnouncementBroadcaster::run() {
   while (this->running_) {
     try {
       this->broadcastAnnouncement_();
-      std::this_thread::sleep_for(this->broadcast_interval_);
     } catch (const std::exception &e) {
       std::cerr << "Error: " << e.what() << std::endl;
     }
+    std::this_thread::sleep_for(this->broadcast_interval_);
   }
 };
 

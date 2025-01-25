@@ -49,11 +49,10 @@ bool RemoteResourceManager::hasResource(
   if (node_it == nodes_.end())
     return false;
 
-  auto resource_it = std::find_if(node_it->second.resources.begin(),
-                                  node_it->second.resources.end(),
-                                  [&resource_name](const Resource &res) {
-                                    return res.name == resource_name;
-                                  });
+  auto resource_it = std::ranges::find_if(node_it->second.resources,
+                                          [&resource_name](const Resource &res) {
+                                            return res.name == resource_name;
+                                          });
   return resource_it != node_it->second.resources.end();
 };
 
@@ -64,10 +63,10 @@ std::vector<struct sockaddr_in> RemoteResourceManager::findNodesWithResource(
 
   for (const auto &[node_addr, node_info] : this->nodes_) {
     auto resource_it =
-        std::find_if(node_info.resources.begin(), node_info.resources.end(),
-                     [&resource_name](const Resource &res) {
-                       return res.name == resource_name;
-                     });
+        std::ranges::find_if(node_info.resources,
+                             [&resource_name](const Resource &res) {
+                               return res.name == resource_name;
+                             });
     if (resource_it != node_info.resources.end())
       found_nodes.push_back(node_addr);
   }

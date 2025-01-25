@@ -10,6 +10,7 @@
 #include <chrono>
 #include <csignal>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -31,7 +32,8 @@ public:
                      broadcast_port, std::chrono::seconds(5)),
         receiver_(remote_resource_manager_, node_id, broadcast_port),
         tcp_server_(local_resource_manager_, tcp_port, 10, simulate_drops),
-        downloader_(downloads_path), tcp_port_(tcp_port) {
+        downloads_path_(downloads_path), downloader_(downloads_path),
+        tcp_port_(tcp_port) {
 
     this->broadcaster_thread_ = std::jthread([this]() { broadcaster_.run(); });
     this->receiver_thread_ = std::jthread([this]() { receiver_.run(); });
@@ -83,28 +85,33 @@ private:
   }
 
   void handleUserInput_(const std::string &input) {
-    int choice = std::stoi(input);
-    switch (choice) {
-    case 1:
-      this->listLocalResources_();
-      break;
-    case 2:
-      this->listRemoteResources_();
-      break;
-    case 3:
-      this->addLocalResource_();
-      break;
-    case 4:
-      this->removeLocalResource_();
-      break;
-    case 5:
-      this->downloadRemoteResource_();
-      break;
-    case 6:
-      shutdown_requested = true;
-      break;
-    default:
-      std::cout << "Invalid command\n";
+    try {
+      int choice = std::stoi(input);
+      switch (choice) {
+      case 1:
+        this->listLocalResources_();
+        break;
+      case 2:
+        this->listRemoteResources_();
+        break;
+      case 3:
+        this->addLocalResource_();
+        break;
+      case 4:
+        this->removeLocalResource_();
+        break;
+      case 5:
+        this->downloadRemoteResource_();
+        break;
+      case 6:
+        shutdown_requested = true;
+        break;
+      default:
+        std::cout
+            << "Invalid command - please enter a number between 1 and 6\n";
+      }
+    } catch (const std::exception &e) {
+      std::cout << "Invalid input - please enter a number between 1 and 6\n";
     }
   }
 
@@ -150,7 +157,7 @@ private:
     std::getline(std::cin, name);
 
     if (!this->local_resource_manager_->removeResource(name)) {
-      std::cerr << "Failed to remove resource: Resource not found: " << name
+      std::cout << "Failed to remove resource: Resource not found: " << name
                 << std::endl;
       return;
     }
@@ -248,6 +255,7 @@ private:
     return choice;
   }
 
+  std::string downloads_path_;
   std::shared_ptr<p2p::LocalResourceManager> local_resource_manager_;
   std::shared_ptr<p2p::RemoteResourceManager> remote_resource_manager_;
   p2p::AnnouncementBroadcaster broadcaster_;
@@ -266,7 +274,7 @@ void signalHandler(int) { shutdown_requested = true; }
 int main(int argc, char *argv[]) {
   try {
     if (argc != 5 && argc != 6 && argc != 7) {
-      std::cerr << "Usage: " << argv[0]
+      std::cout << "Usage: " << argv[0]
                 << " <node_id> <udp_port> <broadcast_port> <tcp_port> "
                    "[simulate_drops] [downloads_path]\n";
       return 1;
@@ -292,7 +300,7 @@ int main(int argc, char *argv[]) {
     app.stop();
     return 0;
   } catch (const std::exception &e) {
-    std::cerr << "Fatal error: " << e.what() << std::endl;
+    std::cout << "Fatal error: " << e.what() << std::endl;
     return 1;
   }
 }

@@ -1,3 +1,4 @@
+#include "p2p-resource-sync/constants.hpp"
 #include <arpa/inet.h>
 #include <cstdint>
 #include <cstring>
@@ -8,6 +9,7 @@
 #include <p2p-resource-sync/logger.hpp>
 #include <p2p-resource-sync/resource_downloader.hpp>
 #include <stdexcept>
+#include <string>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -56,6 +58,7 @@ int ResourceDownloader::initialize_socket_(const std::string &host,
     close(sock);
     throw std::runtime_error("Error connecting to server");
   }
+  Logger::log(LogLevel::INFO, "Successfully connected to " + host + " bytes");
   return sock;
 }
 
@@ -93,8 +96,7 @@ void ResourceDownloader::send_resource_request_(
 
     total_sent += bytes_sent;
   }
-  Logger::log(LogLevel::INFO, "Simulating periodic connection drop after " +
-                                  std::to_string(total_sent) + " bytes");
+  Logger::log(LogLevel::INFO, "Download request sent");
 }
 
 std::pair<bool, uint64_t>
@@ -114,7 +116,7 @@ ResourceDownloader::receive_initial_response_(int sock) const {
   if (received <= 0) {
     throw std::runtime_error("Failed to receive file size");
   }
-
+  Logger::log(LogLevel::INFO, "Received initial response");
   return {true, file_size};
 }
 
@@ -145,8 +147,13 @@ uint64_t ResourceDownloader::receive_file_(int sock, uint64_t offset,
 
     ssize_t received = recv(sock, buffer, to_receive, 0);
     if (received <= 0) {
+      Logger::log(LogLevel::INFO, "Connection lost or recv timeout, received " +
+                                      std::to_string(total_received) +
+                                      " bytes");
       return total_received;
     }
+    Logger::log(LogLevel::INFO,
+                "Successfully received " + std::to_string(received) + " bytes");
 
     file.write(buffer, received);
     if (!file) {
@@ -178,9 +185,11 @@ ResourceDownloader::downloadResource(const std::string &peer_addr,
   for (int attempt = 0; attempt < constants::resource_downloader::MAX_RETRIES;
        attempt++) {
     if (attempt > 0) {
-      std::cout << "Retrying download (attempt " << attempt + 1 << "/"
-                << constants::resource_downloader::MAX_RETRIES
-                << ") from offset " << current_offset << std::endl;
+      Logger::log(
+          LogLevel::INFO,
+          "Retrying download (attempt " + std::to_string(attempt + 1) + "/" +
+              std::to_string(constants::resource_downloader::MAX_RETRIES) +
+              ") from offset " + std::to_string(current_offset));
     }
 
     try {
@@ -201,13 +210,15 @@ ResourceDownloader::downloadResource(const std::string &peer_addr,
       if (current_offset == file_size) {
         return {current_offset, file_size};
       }
-      std::cout << "Download incomplete (attempt " << attempt + 1
-                << "): " << current_offset << "/" << file_size << " bytes"
-                << std::endl;
+      Logger::log(LogLevel::INFO, "Download incomplete (attempt " +
+                                      std::to_string(attempt + 1) + "): " +
+                                      std::to_string(current_offset) + "/" +
+                                      std::to_string(file_size) + " bytes");
 
     } catch (const std::exception &e) {
-      std::cerr << "Error during download (attempt " << attempt + 1
-                << "): " << e.what() << std::endl;
+      Logger::log(LogLevel::ERROR, "Error during download (attempt " +
+                                       std::to_string(attempt + 1) +
+                                       "): " + e.what());
       throw;
     }
   }

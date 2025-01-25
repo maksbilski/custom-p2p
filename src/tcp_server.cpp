@@ -44,7 +44,7 @@ int TcpServer::initializeSocket_(int port, int max_clients) {
   server.sin_family = AF_INET;
   server.sin_port = htons(port);
   server.sin_addr.s_addr = INADDR_ANY;
-  if (bind(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
+  if (bind(sock, reinterpret_cast<struct sockaddr *>(&server), sizeof(server)) < 0) {
     close(sock);
     throw std::runtime_error("Binding socket failed: " +
                              std::string(strerror(errno)));
@@ -133,13 +133,13 @@ void TcpServer::handleClient_(int client_socket) {
     }
 
     size_t total_sent = 0;
-    char buffer[4096];
+    char buffer[constants::tcp_server::BUFFER_SIZE];
     
     int counter = 0;
     while (file.read(buffer, sizeof(buffer))) {
         sendChunk_(client_socket, buffer, sizeof(buffer), total_sent);
         if (should_simulate_periodic_drop_ && 
-            counter % 5 == 4) {
+            counter % constants::tcp_server::DEFAULT_DROP_FREQUENCY == constants::tcp_server::DEFAULT_DROP_FREQUENCY) {
             std::cout << "Simulating periodic connection drop after " 
                      << total_sent << " bytes" << std::endl;
             shutdown(client_socket, SHUT_RDWR);
@@ -196,7 +196,7 @@ void TcpServer::run() {
     }
 
     while (!should_stop_) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+      std::this_thread::sleep_for(constants::tcp_server::MAIN_LOOP_DELAY_MS);
       int client_socket =
           accept(server_socket_, reinterpret_cast<struct sockaddr *>(&client),
                  &client_length);
@@ -220,12 +220,10 @@ void TcpServer::run() {
             }
           });
 
-          client_threads.erase(std::remove_if(client_threads.begin(),
-                                              client_threads.end(),
-                                              [](const std::jthread &t) {
-                                                return !t.joinable();
-                                              }),
-                               client_threads.end());
+          std::erase_if(client_threads,
+                        [](const std::jthread &t) {
+                          return !t.joinable();
+                        });
 
         } catch (const std::exception &e) {
           std::cerr << "Failed to create client thread: " << e.what()

@@ -2,11 +2,11 @@
 
 #include "announcement_broadcaster.hpp"
 #include "remote_resource_manager.hpp"
+#include "constants.hpp"
 #include <atomic>
 #include <cstdint>
 #include <memory>
 #include <netinet/in.h>
-#include <sys/socket.h>
 
 namespace p2p {
 
@@ -14,11 +14,10 @@ class AnnouncementReceiver {
 public:
   AnnouncementReceiver(std::shared_ptr<RemoteResourceManager> resource_manager,
                        uint32_t node_id, uint16_t port,
-                       int socket_timeout_ms = 1000);
+                       int socket_timeout_ms = constants::announcement_receiver::DEFAULT_SOCKET_TIMEOUT_MS);
 
   ~AnnouncementReceiver();
 
-  // Delete copy and move operations
   AnnouncementReceiver(const AnnouncementReceiver &) = delete;
   AnnouncementReceiver &operator=(const AnnouncementReceiver &) = delete;
 
@@ -42,7 +41,7 @@ private:
   int socket_;
   std::atomic<bool> running_{false};
   static constexpr size_t MAX_DATAGRAM_SIZE =
-      65507; // Maksymalny rozmiar datagramu UDP
+      constants::announcement_receiver::MAX_DATAGRAM_SIZE;
 };
 
 } // namespace p2p

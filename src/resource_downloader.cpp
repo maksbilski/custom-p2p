@@ -39,10 +39,9 @@ int ResourceDownloader::initialize_socket_(const std::string &host,
   }
 
   struct sockaddr_in server;
-  struct hostent *hp;
 
   server.sin_family = AF_INET;
-  hp = gethostbyname(host.c_str());
+  const struct hostent *hp = gethostbyname(host.c_str());
 
   if (!hp) {
     close(sock);
@@ -51,7 +50,8 @@ int ResourceDownloader::initialize_socket_(const std::string &host,
   std::memcpy(&server.sin_addr, hp->h_addr, hp->h_length);
   server.sin_port = htons(static_cast<uint16_t>(port));
 
-  if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
+  if (connect(sock, reinterpret_cast<struct sockaddr *>(&server),
+              sizeof(server)) < 0) {
     close(sock);
     throw std::runtime_error("Error connecting to server");
   }
@@ -132,11 +132,11 @@ uint64_t ResourceDownloader::receive_file_(int sock, uint64_t offset,
     file.seekp(offset);
   }
 
-  char buffer[4096];
   uint64_t total_received = offset;
   int last_percentage = -1;
 
   while (total_received < file_size) {
+    char buffer[constants::resource_downloader::BUFFER_SIZE];
     size_t to_receive = std::min(
         sizeof(buffer), static_cast<size_t>(file_size - total_received));
 
@@ -166,18 +166,18 @@ uint64_t ResourceDownloader::receive_file_(int sock, uint64_t offset,
 std::pair<uint64_t, uint64_t>
 ResourceDownloader::downloadResource(const std::string &peer_addr,
                                      int peer_port, uint64_t offset,
-                                     const std::string &resource_name) {
+                                     const std::string &resource_name) const {
   std::cout << "Downloading " << resource_name << " from " << peer_addr
             << std::endl;
-  const int MAX_RETRIES = 5;
   uint64_t current_offset = offset;
   uint64_t file_size = 0;
 
-  for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  for (int attempt = 0; attempt < constants::resource_downloader::MAX_RETRIES;
+       attempt++) {
     if (attempt > 0) {
       std::cout << "Retrying download (attempt " << attempt + 1 << "/"
-                << MAX_RETRIES << ") from offset " << current_offset
-                << std::endl;
+                << constants::resource_downloader::MAX_RETRIES
+                << ") from offset " << current_offset << std::endl;
     }
 
     try {
@@ -205,12 +205,9 @@ ResourceDownloader::downloadResource(const std::string &peer_addr,
     } catch (const std::exception &e) {
       std::cerr << "Error during download (attempt " << attempt + 1
                 << "): " << e.what() << std::endl;
-      if (attempt == MAX_RETRIES - 1) {
-        throw;
-      }
+      throw;
     }
   }
   return {current_offset, file_size};
 }
-
 } // namespace p2p

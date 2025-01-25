@@ -1,12 +1,12 @@
 #pragma once
 #include "local_resource_manager.hpp"
 #include "remote_resource_manager.hpp"
+#include "constants.hpp"
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <vector>
 
 namespace p2p {
@@ -22,13 +22,12 @@ typedef struct {
 class AnnouncementBroadcaster {
 public:
   AnnouncementBroadcaster(
-      std::shared_ptr<LocalResourceManager> resource_manager, uint32_t node_id,
+      const std::shared_ptr<LocalResourceManager> &resource_manager, uint32_t node_id,
       uint16_t port, uint16_t broadcast_port,
-      std::chrono::seconds broadcast_interval = std::chrono::seconds(30));
+      std::chrono::seconds broadcast_interval = constants::announcement_broadcaster::DEFAULT_BROADCAST_INTERVAL);
 
   ~AnnouncementBroadcaster();
 
-  // Delete copy and move operations
   AnnouncementBroadcaster(const AnnouncementBroadcaster &) = delete;
   AnnouncementBroadcaster &operator=(const AnnouncementBroadcaster &) = delete;
 

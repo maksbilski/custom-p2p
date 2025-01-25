@@ -2,7 +2,6 @@
 
 #include <chrono>
 #include <cstdint>
-#include <ctime>
 #include <map>
 #include <netinet/in.h>
 #include <shared_mutex>
@@ -37,7 +36,7 @@ public:
                                 const std::vector<Resource> &resources,
                                 uint64_t timestamp);
 
-  bool hasResource(const struct sockaddr_in &node_addess,
+  bool hasResource(const struct sockaddr_in &node_address,
                    const std::string &resource_name) const;
 
   std::vector<struct sockaddr_in>

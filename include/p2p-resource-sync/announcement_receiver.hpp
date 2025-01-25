@@ -28,7 +28,7 @@ public:
 private:
   void initializeSocket_(int socket_timeout_ms);
 
-  bool receiveAndProcessAnnouncement_();
+  void receiveAndProcessAnnouncement_();
 
   void processAnnouncement_(const std::vector<uint8_t> &buffer, size_t size,
                             const struct sockaddr_in &sender_addr);

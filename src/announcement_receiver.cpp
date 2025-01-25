@@ -1,10 +1,13 @@
 #include "p2p-resource-sync/announcement_receiver.hpp"
 #include <cstdint>
 #include <cstring>
+#include <exception>
+#include <iostream>
 #include <memory>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <p2p-resource-sync/announcement_broadcaster.hpp>
+#include <stdexcept>
 #include <string>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -53,7 +56,7 @@ void AnnouncementReceiver::initializeSocket_(int socket_timeout_ms) {
   }
 };
 
-bool AnnouncementReceiver::receiveAndProcessAnnouncement_() {
+void AnnouncementReceiver::receiveAndProcessAnnouncement_() {
   std::vector<uint8_t> buffer(MAX_DATAGRAM_SIZE);
   struct sockaddr_in sender_addr;
   socklen_t sender_addr_len = sizeof(sender_addr);
@@ -63,14 +66,13 @@ bool AnnouncementReceiver::receiveAndProcessAnnouncement_() {
                (struct sockaddr *)&sender_addr, &sender_addr_len);
 
   if (received < 0) {
-    return false;
+    return;
   }
 
   try {
     processAnnouncement_(buffer, received, sender_addr);
-    return true;
   } catch (const std::exception &e) {
-    return false;
+    throw std::runtime_error("Failed to process announcement");
   }
 }
 
@@ -118,22 +120,13 @@ AnnouncementReceiver::parseAnnounceMessage_(const std::vector<uint8_t> &buffer,
     Resource resource;
 
     uint32_t nameLength;
-    if (offset + sizeof(uint32_t) > size) {
-      throw std::runtime_error("Buffer overflow reading name length");
-    }
     std::memcpy(&nameLength, buffer.data() + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
-    if (offset + nameLength > size) {
-      throw std::runtime_error("Buffer overflow reading name");
-    }
     resource.name.assign(reinterpret_cast<const char *>(buffer.data() + offset),
                          nameLength);
     offset += nameLength;
 
-    if (offset + sizeof(uint32_t) > size) {
-      throw std::runtime_error("Buffer overflow reading resource size");
-    }
     std::memcpy(&resource.size, buffer.data() + offset, sizeof(uint32_t));
     offset += sizeof(uint32_t);
 
@@ -146,7 +139,11 @@ AnnouncementReceiver::parseAnnounceMessage_(const std::vector<uint8_t> &buffer,
 void AnnouncementReceiver::run() {
   this->running_ = true;
   while (this->running_) {
-    this->receiveAndProcessAnnouncement_();
+    try {
+      this->receiveAndProcessAnnouncement_();
+    } catch (std::exception e) {
+      std::cerr << "Error: " << e.what() << std::endl;
+    }
   }
 }
 

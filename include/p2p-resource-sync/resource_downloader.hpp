@@ -6,6 +6,8 @@
 #include <netinet/in.h>
 #include <string>
 
+#include "constants.hpp"
+
 namespace p2p {
 
 /**
@@ -35,10 +37,11 @@ public:
   /**
    * @brief Constructor
    * @param download_dir Directory where downloaded resources will be saved
+   * @param socket_timeout_ms Timeout for waiting on connection to server
    * @param connect_timeout_ms Connection timeout in milliseconds
    */
   explicit ResourceDownloader(const std::string &download_dir,
-                              uint32_t socket_timeout_ms = 60000);
+                              uint32_t socket_timeout_ms = constants::resource_downloader::DEFAULT_SOCKET_TIMEOUT_MS);
 
   ~ResourceDownloader() = default;
 
@@ -59,7 +62,7 @@ public:
    */
   std::pair<uint64_t, uint64_t>
   downloadResource(const std::string &peer_addr, int peer_port, uint64_t offset,
-                   const std::string &resource_name);
+                   const std::string &resource_name) const;
 
 private:
   const std::string download_dir_;

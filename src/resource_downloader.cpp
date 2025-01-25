@@ -6,6 +6,7 @@
 #include <iostream>
 #include <netdb.h>
 #include <p2p-resource-sync/resource_downloader.hpp>
+#include <stdexcept>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -173,7 +174,6 @@ ResourceDownloader::downloadResource(const std::string &peer_addr,
   uint64_t file_size = 0;
 
   for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
-
     if (attempt > 0) {
       std::cout << "Retrying download (attempt " << attempt + 1 << "/"
                 << MAX_RETRIES << ") from offset " << current_offset
@@ -205,7 +205,8 @@ ResourceDownloader::downloadResource(const std::string &peer_addr,
     } catch (const std::exception &e) {
       std::cerr << "Error during download (attempt " << attempt + 1
                 << "): " << e.what() << std::endl;
-      throw;
+      if (attempt == MAX_RETRIES - 1) {
+        throw;
       }
     }
   }
